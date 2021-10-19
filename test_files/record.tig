@@ -1,0 +1,23 @@
+let type Point = {
+        x: int,
+        y: int
+    }
+    var point := Point {
+        x = 42,
+        y = 24
+    }
+    var origin := Point {
+        x = 0,
+        y = 0
+    }
+in (
+    printi(point.x);
+    printi(point.y);
+    point.y := 100;
+    printi(point.x);
+    printi(point.y);
+    point.x := 200;
+    printi(point.x);
+    printi(point.y)
+)
+end

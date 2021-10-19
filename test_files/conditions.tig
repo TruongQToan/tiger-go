@@ -1,0 +1,38 @@
+let var num := 42
+    var false :=
+        if 1 < 0 then
+            "true"
+        else
+            "false"
+    var true :=
+        if 1 then
+            "true"
+        else
+            "false"
+in (
+    if num > 40 then
+        print("num > 40\n")
+    else
+        print("num <= 40\n");
+
+    if num < 40 then
+        print("num < 40\n")
+    else
+        print("num >= 40\n");
+
+    if num > 42 then
+        print("num > 42\n")
+    else
+        print("num <= 42\n");
+
+    if num < 42 then
+        print("num < 42\n")
+    else
+        print("num >= 42\n");
+
+    print(false);
+    print("\n");
+    print(true);
+    print("\n")
+)
+end
