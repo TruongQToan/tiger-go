@@ -241,13 +241,6 @@ func NewMinus(pos *Pos) *Token {
 	}
 }
 
-func NewNew(pos *Pos) *Token {
-	return &Token{
-		tok: "new",
-		pos: pos,
-	}
-}
-
 func NewNil(pos *Pos) *Token {
 	return &Token{
 		tok: "nil",
@@ -255,9 +248,9 @@ func NewNil(pos *Pos) *Token {
 	}
 }
 
-func NewNotEqual(pos *Pos) Token {
-	return Token{
-		tok: "<>",
+func NewNotEqual(pos *Pos) *Token {
+	return &Token{
+		tok: "!=",
 		pos: pos,
 	}
 }

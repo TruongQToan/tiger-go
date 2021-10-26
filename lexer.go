@@ -144,8 +144,6 @@ func (lex *Lexer) identifier() (*Token, error) {
 		return NewLet(&pos), nil
 	case "method":
 		return NewMethod(&pos), nil
-	case "new":
-		return NewNew(&pos), nil
 	case "nil":
 		return NewNil(&pos), nil
 	case "of":
@@ -200,7 +198,7 @@ func (lex *Lexer) twoCharsToken(nextChar byte, nextToken, defaultToken func(pos 
 }
 
 func (lex *Lexer) colonOrEqual() (*Token, error) {
-	return lex.twoCharsToken('=', NewAssign, NewEqual)
+	return lex.twoCharsToken('=', NewAssign, NewColon)
 }
 
 func (lex *Lexer) greaterOrGreaterEq() (*Token, error) {
@@ -476,6 +474,27 @@ func (lex *Lexer) Token() (*Token, error) {
 		return lex.greaterOrGreaterEq()
 	case '<':
 		return lex.lesserOrLesserEq()
+	case '!':
+		pos := *lex.pos
+		if err := lex.advance(); err != nil {
+			return nil, err
+		}
+
+		curChar, err := lex.currentChar()
+		if err != nil {
+			return nil, err
+		}
+
+		if curChar != '=' {
+			return nil, fmt.Errorf("invalid character %+v", pos)
+		}
+
+		if err := lex.advance(); err != nil {
+			return nil, err
+		}
+
+		pos.length = 2
+		return NewNotEqual(&pos), nil
 	case '/':
 		tok, err := lex.divOrCmt()
 		if err != nil {
