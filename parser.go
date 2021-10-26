@@ -28,6 +28,11 @@ func (p *Parser) nextToken() error {
 	return nil
 }
 
+func (p *Parser) primaryExp() (Exp, error) {
+	// TODO: finish this function
+	return nil, nil
+}
+
 func (p *Parser) unaryExp() (Exp, error) {
 	tok := p.peekToken()
 	if tok.tok == "-" {
@@ -54,7 +59,6 @@ func (p *Parser) unaryExp() (Exp, error) {
 		}, nil
 	}
 
-	// TODO: finish this function
 	return p.primaryExp()
 }
 
@@ -127,7 +131,7 @@ func (p *Parser) addExp() (Exp, error) {
 		}
 
 		if op.tok == "+" {
-			exp = OperExp{
+			exp = &OperExp{
 				left: exp,
 				op: OperatorWithPos{
 					op: Plus,
@@ -136,7 +140,7 @@ func (p *Parser) addExp() (Exp, error) {
 				right: nextExp,
 			}
 		} else {
-			exp = OperExp{
+			exp = &OperExp{
 				left: exp,
 				op: OperatorWithPos{
 					op: Minus,
