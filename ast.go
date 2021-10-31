@@ -29,7 +29,7 @@ type RecordField struct {
 }
 
 type Declaration interface {
-	DeclPos()
+	DeclPos() Pos
 }
 
 type Field struct {
@@ -183,7 +183,7 @@ func (e *NilExp) ExpPos() Pos {
 
 type OperExp struct {
 	left  Exp
-	op    OperatorWithPos
+	op    *OperatorWithPos
 	right Exp
 }
 
@@ -210,29 +210,29 @@ func (e *SequenceExp) ExpPos() Pos {
 	return e.pos
 }
 
-type Str struct {
+type StrExp struct {
 	str string
 	pos Pos
 }
 
-func (e *Str) ExpPos() Pos {
+func (e *StrExp) ExpPos() Pos {
 	return e.pos
 }
 
-type Var struct {
+type VarExp struct {
 	sym SymbolWithPos
 }
 
-func (e *Var) ExpPos() Pos {
+func (e *VarExp) ExpPos() Pos {
 	return e.sym.pos
 }
 
-type While struct {
+type WhileExp struct {
 	pred Exp
 	body Exp
 	pos  Pos
 }
 
-func (e *While) ExpPos() Pos {
+func (e *WhileExp) ExpPos() Pos {
 	return e.pos
 }
