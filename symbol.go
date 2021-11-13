@@ -22,11 +22,11 @@ func (s *Strings) Get(sym Symbol) string {
 
 type Symbols struct {
 	stack   [][]Symbol
-	strings Strings
+	strings *Strings
 	table   map[Symbol][]interface{}
 }
 
-func NewSymbols(strings Strings) *Symbols {
+func NewSymbols(strings *Strings) *Symbols {
 	symbols := Symbols{
 		strings: strings,
 		table:   make(map[Symbol][]interface{}),

@@ -13,12 +13,12 @@ func (err ErrUnexpectedTok) Error() string {
 }
 
 type Parser struct {
-	lexer     Lexer
+	lexer     *Lexer
 	lookahead *Token
-	symbols   Symbols
+	symbols   *Symbols
 }
 
-func NewParser(lexer Lexer, symbols Symbols) *Parser {
+func NewParser(lexer *Lexer, symbols *Symbols) *Parser {
 	return &Parser{
 		lexer:     lexer,
 		lookahead: nil,
@@ -229,19 +229,11 @@ func (p *Parser) ifExp() (Exp, error) {
 }
 
 func (p *Parser) funcArgs() ([]Exp, error) {
-	if err := p.nextToken(); err != nil {
-		return nil, err
-	}
-
 	args := make([]Exp, 0)
 	for true {
 		tok := p.peekToken()
 		if tok.tok == ")" {
 			break
-		}
-
-		if err := p.nextToken(); err != nil {
-			return nil, err
 		}
 
 		arg, err := p.Exp()
@@ -250,8 +242,15 @@ func (p *Parser) funcArgs() ([]Exp, error) {
 		}
 
 		args = append(args, arg)
-		if tok := p.peekToken(); tok.tok != "," {
+		tok = p.peekToken()
+		if tok.tok != "," && tok.tok != ")" {
 			return nil, fmt.Errorf("unexpected token %+v", tok.pos)
+		}
+
+		if tok.tok == "," {
+			if err := p.nextToken(); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -321,7 +320,7 @@ func (p *Parser) createRecord(ty Symbol, pos *Pos) (Exp, error) {
 	}, err
 }
 
-func (p *Parser) funcOrIndent() (Exp, error) {
+func (p *Parser) funcOrIdent() (Exp, error) {
 	tok := p.peekToken()
 	name := tok.value.(string)
 	sym := p.symbols.Symbol(name)
@@ -333,9 +332,19 @@ func (p *Parser) funcOrIndent() (Exp, error) {
 
 	switch tok.tok {
 	case "(":
+		if err := p.nextToken(); err != nil {
+			return nil, err
+		}
+
 		args, err := p.funcArgs()
 		if err != nil {
 			return nil, err
+		}
+
+		if p.peekToken().tok == ")" {
+			if err := p.nextToken(); err != nil {
+				return nil, err
+			}
 		}
 
 		return &CallExp{
@@ -380,7 +389,7 @@ func (p *Parser) optionalType() (Symbol, error) {
 		return 0, fmt.Errorf("unexpected token %+v", tok.pos)
 	}
 
-	return p.symbols.Symbol(tok.value.(string)), nil
+	return p.symbols.Symbol(tok.value.(string)), p.nextToken()
 }
 
 func (p *Parser) fieldDecl() (*Field, error) {
@@ -470,18 +479,17 @@ func (p *Parser) funcDecl() (*FuncDecl, error) {
 		return nil, fmt.Errorf("unexpected token %+v", ident.pos)
 	}
 
+	if err := p.nextToken(); err != nil {
+		return nil, err
+	}
+
 	params, err := p.fields(")")
 	if err != nil {
 		return nil, err
 	}
 
-	closeCur, err := p.peekNext()
-	if err != nil {
+	if err := p.nextToken(); err != nil {
 		return nil, err
-	}
-
-	if closeCur.tok != ")" {
-		return nil, fmt.Errorf("unexpected token %+v", ident.pos)
 	}
 
 	ty, err := p.optionalType()
@@ -489,13 +497,13 @@ func (p *Parser) funcDecl() (*FuncDecl, error) {
 		return nil, err
 	}
 
-	tok, err = p.peekNext()
-	if err != nil {
-		return nil, err
-	}
-
+	tok = p.peekToken()
 	if tok.tok != "=" {
 		return nil, fmt.Errorf("unexpected token %+v", tok.pos)
+	}
+
+	if err := p.nextToken(); err != nil {
+		return nil, err
 	}
 
 	body, err := p.Exp()
@@ -639,30 +647,6 @@ func (p *Parser) tyDecl() (Declaration, error) {
 	}, nil
 }
 
-//func (p *Parser) tyDecls() (Declaration, error) {
-//	dec, err := p.tyDecl()
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	decls := TypeDecls{dec}
-//	for true {
-//		tok := p.peekToken()
-//		if tok.tok != "ident" {
-//			break
-//		}
-//
-//		dec, err := p.tyDecl()
-//		if err != nil {
-//			return nil, err
-//		}
-//
-//		decls = append(decls, dec)
-//	}
-//
-//	return decls, nil
-//}
-
 func (p *Parser) varDecl() (Declaration, error) {
 	pos := p.peekToken().pos
 	tok, err := p.peekNext()
@@ -704,26 +688,29 @@ func (p *Parser) varDecl() (Declaration, error) {
 }
 
 func (p *Parser) declarations() (Declaration, error) {
-	tok, pos := p.peekToken().tok, p.peekToken().pos
-	switch tok {
-	case "funcDecl":
+	tok := p.peekToken()
+	if tok.tok != "ident" {
+		return nil, ErrUnexpectedTok{tok.pos}
+	}
+
+	switch tok.value {
+	case "function":
 		return p.funcDecl()
 	case "type":
 		return p.tyDecl()
 	case "var":
 		return p.varDecl()
 	default:
-		return nil, &ErrUnexpectedTok{pos}
+		return nil, &ErrUnexpectedTok{tok.pos}
 	}
 }
 
 func (p *Parser) letExp() (Exp, error) {
+	pos := p.peekToken().pos
 	tok, err := p.peekNext()
 	if err != nil {
 		return nil, err
 	}
-
-	pos := tok.pos
 
 	decl, err := p.declarations()
 	if err != nil {
@@ -752,6 +739,10 @@ LOOP:
 
 	if p.peekToken().tok != "in" {
 		return nil, &ErrUnexpectedTok{pos: p.peekToken().pos}
+	}
+
+	if err := p.nextToken(); err != nil {
+		return nil, err
 	}
 
 	exp, err := p.Exp()
@@ -892,7 +883,7 @@ func (p *Parser) primaryExp() (Exp, error) {
 	case "if":
 		return p.ifExp()
 	case "ident":
-		return p.funcOrIndent()
+		return p.funcOrIdent()
 	case "int":
 		return p.intConst()
 	case "let":
@@ -940,7 +931,6 @@ func (p *Parser) unaryExp() (Exp, error) {
 }
 
 func (p *Parser) mulExp() (Exp, error) {
-	// Can be in the format 2+3-4
 	exp, err := p.unaryExp()
 	if err != nil {
 		return nil, err
@@ -1134,6 +1124,14 @@ func (p *Parser) orExp() (Exp, error) {
 		},
 		right: right,
 	}, nil
+}
+
+func (p *Parser) Parse() (Exp, error) {
+	if err := p.nextToken(); err != nil {
+		return nil, err
+	}
+
+	return p.Exp()
 }
 
 func (p *Parser) Exp() (Exp, error) {
