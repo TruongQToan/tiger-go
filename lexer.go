@@ -134,7 +134,7 @@ func (lex *Lexer) identifier() (*Token, error) {
 		return NewExtends(&pos), nil
 	case "for":
 		return NewFor(&pos), nil
-	case "function":
+	case "funcDecl":
 		return NewFunction(&pos), nil
 	case "if":
 		return NewIf(&pos), nil
@@ -321,7 +321,7 @@ func (lex *Lexer) string() (*Token, error) {
 				return nil, err
 			}
 
-			// TODO: bundle advance and currentChar into one function?
+			// TODO: bundle advance and currentChar into one funcDecl?
 			curChar, err := lex.currentChar()
 			if err != nil {
 				return nil, err

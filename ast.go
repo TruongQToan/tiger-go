@@ -40,14 +40,11 @@ type Field struct {
 }
 
 type FuncDecl struct {
-	decls []struct {
-		name   Symbol
-		params []*Field
-		result *SymbolWithPos
-		body   Exp
-		pos    Pos
-	}
-	pos Pos
+	name     Symbol
+	params   []*Field
+	resultTy Symbol
+	body     Exp
+	pos      Pos
 }
 
 func (f *FuncDecl) DeclPos() Pos {
@@ -55,35 +52,38 @@ func (f *FuncDecl) DeclPos() Pos {
 }
 
 type VarDecl struct {
-	name   SymbolWithPos
+	name   Symbol
 	escape bool
-	typ    SymbolWithPos
+	typ    Symbol
 	init   Exp
+	pos    Pos
 }
 
 func (f *VarDecl) DeclPos() Pos {
-	return f.name.pos
+	return f.pos
 }
 
 type TypeDecl struct {
+	tyName Symbol
 	typ  Ty
-	name SymbolWithPos
+	pos  Pos
 }
 
 func (f *TypeDecl) DeclPos() Pos {
-	return f.name.pos
+	return f.pos
 }
 
 type Ty interface {
-	TyPos()
+	TyPos() Pos
 }
 
 type NameTy struct {
-	ty SymbolWithPos
+	ty  Symbol
+	pos Pos
 }
 
 func (t *NameTy) TyPos() Pos {
-	return t.ty.pos
+	return t.pos
 }
 
 type RecordTy struct {
@@ -96,11 +96,12 @@ func (t *RecordTy) TyPos() Pos {
 }
 
 type ArrayTy struct {
-	ty SymbolWithPos
+	ty  Symbol
+	pos Pos
 }
 
 func (t *ArrayTy) TyPos() Pos {
-	return t.ty.pos
+	return t.pos
 }
 
 type Exp interface {
@@ -110,11 +111,12 @@ type Exp interface {
 type ArrExp struct {
 	init Exp
 	size Exp
-	typ  SymbolWithPos
+	typ  Symbol
+	pos  Pos
 }
 
 func (e *ArrExp) ExpPos() Pos {
-	return e.typ.pos
+	return e.pos
 }
 
 type AssignExp struct {
@@ -135,12 +137,13 @@ func (e *BreakExp) ExpPos() Pos {
 }
 
 type CallExp struct {
-	function SymbolWithPos
+	function Symbol
 	args     []Exp
+	pos      Pos
 }
 
 func (e *CallExp) ExpPos() Pos {
-	return e.function.pos
+	return e.pos
 }
 
 type IfExp struct {
@@ -192,8 +195,8 @@ func (e *OperExp) ExpPos() Pos {
 }
 
 type RecordExp struct {
-	fields []RecordField
-	typ    SymbolWithPos
+	fields []*RecordField
+	typ    Symbol
 	pos    Pos
 }
 
@@ -220,11 +223,12 @@ func (e *StrExp) ExpPos() Pos {
 }
 
 type VarExp struct {
-	sym SymbolWithPos
+	sym Symbol
+	pos Pos
 }
 
 func (e *VarExp) ExpPos() Pos {
-	return e.sym.pos
+	return e.pos
 }
 
 type WhileExp struct {

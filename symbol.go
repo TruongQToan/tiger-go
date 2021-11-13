@@ -94,8 +94,3 @@ func (s *Symbols) Symbol(str string) Symbol {
 	s.strings.strings[s.strings.nextSymbol] = str
 	return s.strings.nextSymbol
 }
-
-type SymbolWithPos struct {
-	sym Symbol
-	pos Pos
-}
