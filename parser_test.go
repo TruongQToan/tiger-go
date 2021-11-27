@@ -13,47 +13,38 @@ import (
 func TestParser_Hello2(t *testing.T) {
 	t.Parallel()
 
-	fn := "./test_files/hello2.tig"
-	f, err := os.ReadFile(fn)
-	require.NoError(t, err)
-	buf := bufio.NewReader(bytes.NewReader(f))
-	lexer := NewLexer(fn, buf)
-
-	symbols := NewSymbols(NewStrings())
-	parser := NewParser(lexer, symbols)
-	exp, err := parser.Parse()
-	require.NoError(t, err)
-	strBuilder := strings.Builder{}
-	exp.String(symbols, &strBuilder, 0)
-	fmt.Println(strBuilder.String())
+	testFile(t, "./test_files/hello2.tig")
 }
 
 func TestParser_Integers(t *testing.T) {
 	t.Parallel()
 
-	fn := "./test_files/integers.tig"
-	f, err := os.ReadFile(fn)
-	require.NoError(t, err)
-	buf := bufio.NewReader(bytes.NewReader(f))
-	lexer := NewLexer(fn, buf)
-
-	symbols := NewSymbols(NewStrings())
-	parser := NewParser(lexer, symbols)
-	exp, err := parser.Parse()
-	require.NoError(t, err)
-	strBuilder := strings.Builder{}
-	exp.String(symbols, &strBuilder, 0)
-	fmt.Println(strBuilder.String())
+	testFile(t, "./test_files/integers.tig")
 }
 
 func TestParser_Loops(t *testing.T) {
 	t.Parallel()
 
-	fn := "./test_files/loops.tig"
-	f, err := os.ReadFile(fn)
+	testFile(t, "./test_files/loops.tig")
+}
+
+func TestParser_Cycle(t *testing.T) {
+	t.Parallel()
+
+	testFile(t, "./test_files/cycle.tig")
+}
+
+func TestParser_Functions(t *testing.T) {
+	t.Parallel()
+
+	testFile(t, "./test_files/functions.tig")
+}
+
+func testFile(t *testing.T, fileName string) {
+	f, err := os.ReadFile(fileName)
 	require.NoError(t, err)
 	buf := bufio.NewReader(bytes.NewReader(f))
-	lexer := NewLexer(fn, buf)
+	lexer := NewLexer(fileName, buf)
 
 	symbols := NewSymbols(NewStrings())
 	parser := NewParser(lexer, symbols)

@@ -113,7 +113,7 @@ func (f *Field) String(symbols *Symbols, strBuilder *strings.Builder, level int)
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Escape\n")
 	indent(strBuilder, level+2)
-	strBuilder.WriteString(strconv.FormatBool(f.escape))
+	strBuilder.WriteString(strconv.FormatBool(f.escape) + "\n")
 }
 
 type FuncDecl struct {
@@ -360,6 +360,7 @@ func (e *FieldExp) String(symbols *Symbols, strBuilder *strings.Builder, level i
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("FirstExp\n")
 	e.firstExp.String(symbols, strBuilder, level+2)
+	indent(strBuilder, level+1)
 	strBuilder.WriteString("FieldName\n")
 	indent(strBuilder, level+2)
 	strBuilder.WriteString(symbols.Name(e.fieldName) + "\n")
@@ -578,6 +579,7 @@ func (e *WhileExp) String(symbols *Symbols, strBuilder *strings.Builder, level i
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Predicate\n")
 	e.pred.String(symbols, strBuilder, level+2)
+	indent(strBuilder, level+1)
 	strBuilder.WriteString("Body\n")
 	e.body.String(symbols, strBuilder, level+2)
 }

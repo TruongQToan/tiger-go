@@ -128,12 +128,10 @@ func (p *Parser) forExp() (Exp, error) {
 		return nil, err
 	}
 
-	startSymbol := p.symbols.Symbol(varName + "_start")
 	endSymbol := p.symbols.Symbol(varName + "_end")
-
 	declarations := []Declaration{
 		&VarDecl{
-			name: startSymbol,
+			name: sym,
 			init: start,
 		},
 		&VarDecl{
@@ -149,7 +147,7 @@ func (p *Parser) forExp() (Exp, error) {
 				op: Le,
 			},
 			right: &VarExp{
-				sym: sym,
+				sym: endSymbol,
 			},
 		},
 		then: &WhileExp{
@@ -280,6 +278,10 @@ func (p *Parser) oneField() (*RecordField, error) {
 		return nil, fmt.Errorf("unexpected token %+v", tok.pos)
 	}
 
+	if err := p.nextToken(); err != nil {
+		return nil, err
+	}
+
 	exp, err := p.Exp()
 	if err != nil {
 		return nil, err
@@ -306,7 +308,15 @@ func (p *Parser) createRecord(ty Symbol, pos *Pos) (Exp, error) {
 	for true {
 		tok := p.peekToken()
 		if tok.tok != "," {
-			break
+			if tok.tok == "}" {
+				if err := p.nextToken(); err != nil {
+					return nil, err
+				}
+
+				break
+			} else {
+				return nil, ErrUnexpectedTok{tok.pos}
+			}
 		}
 
 		if err := p.nextToken(); err != nil {
@@ -415,7 +425,7 @@ func (p *Parser) fieldExp(exp Exp) (Exp, error) {
 		firstExp:  exp,
 		fieldName: fieldName,
 		pos:       *tok.pos,
-	}, nil
+	}, p.nextToken()
 }
 
 func (p *Parser) lvalue(exp Exp) (Exp, error) {
@@ -549,7 +559,7 @@ func (p *Parser) fieldDecl() (*Field, error) {
 		escape: false,
 		typ:    typSym,
 		pos:    *pos,
-	}, nil
+	}, p.nextToken()
 }
 
 func (p *Parser) fields(endTok string) ([]*Field, error) {
@@ -692,18 +702,17 @@ func (p *Parser) arrayTy() (Ty, error) {
 
 func (p *Parser) recTy() (Ty, error) {
 	pos := p.peekToken().pos
+	if err := p.nextToken(); err != nil {
+		return nil, err
+	}
+
 	fields, err := p.fields("}")
 	if err != nil {
 		return nil, err
 	}
 
-	tok, err := p.peekNext()
-	if err != nil {
+	if err := p.nextToken(); err != nil {
 		return nil, err
-	}
-
-	if tok.tok != "}" {
-		return nil, fmt.Errorf("unexpected token %+v", tok.pos)
 	}
 
 	return &RecordTy{
@@ -782,17 +791,17 @@ func (p *Parser) varDecl() (Declaration, error) {
 		return nil, &ErrUnexpectedTok{tok.pos}
 	}
 
+	if err := p.nextToken(); err != nil {
+		return nil, err
+	}
+
 	varName := p.symbols.Symbol(tok.value.(string))
 	ty, err := p.optionalType()
 	if err != nil {
 		return nil, err
 	}
 
-	tok, err = p.peekNext()
-	if err != nil {
-		return nil, err
-	}
-
+	tok = p.peekToken()
 	if tok.tok != ":=" {
 		return nil, ErrUnexpectedTok{tok.pos}
 	}
