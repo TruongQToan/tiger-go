@@ -1,6 +1,8 @@
 package tiger
 
-import "strings"
+import (
+	"strings"
+)
 
 type Symbol = uint64
 

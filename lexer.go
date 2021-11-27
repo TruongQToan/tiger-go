@@ -134,7 +134,7 @@ func (lex *Lexer) identifier() (*Token, error) {
 		return NewExtends(&pos), nil
 	case "for":
 		return NewFor(&pos), nil
-	case "funcDecl":
+	case "function":
 		return NewFunction(&pos), nil
 	case "if":
 		return NewIf(&pos), nil

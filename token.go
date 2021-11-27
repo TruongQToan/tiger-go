@@ -175,7 +175,7 @@ func NewFor(pos *Pos) *Token {
 
 func NewFunction(pos *Pos) *Token {
 	return &Token{
-		tok: "funcDecl",
+		tok: "function",
 		pos: pos,
 	}
 }

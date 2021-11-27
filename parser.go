@@ -91,18 +91,22 @@ func (p *Parser) forExp() (Exp, error) {
 		return nil, fmt.Errorf("unexpected token %+v", tok.pos)
 	}
 
+	if err := p.nextToken(); err != nil {
+		return nil, err
+	}
+
 	start, err := p.Exp()
 	if err != nil {
 		return nil, err
 	}
 
-	tok, err = p.peekNext()
-	if err != nil {
-		return nil, err
-	}
-
+	tok = p.peekToken()
 	if tok.tok != "to" {
 		return nil, fmt.Errorf("unexpected token %+v", tok.pos)
+	}
+
+	if err := p.nextToken(); err != nil {
+		return nil, err
 	}
 
 	end, err := p.Exp()
@@ -110,13 +114,13 @@ func (p *Parser) forExp() (Exp, error) {
 		return nil, err
 	}
 
-	tok, err = p.peekNext()
-	if err != nil {
-		return nil, err
-	}
-
+	tok = p.peekToken()
 	if tok.tok != "do" {
 		return nil, fmt.Errorf("unexpected token %+v", tok.pos)
+	}
+
+	if err := p.nextToken(); err != nil {
+		return nil, err
 	}
 
 	body, err := p.Exp()
@@ -197,9 +201,13 @@ func (p *Parser) ifExp() (Exp, error) {
 		return nil, err
 	}
 
-	tok, err := p.peekNext()
+	tok := p.peekToken()
 	if tok.tok != "then" {
 		return nil, fmt.Errorf("unexpected token %+v", tok.pos)
+	}
+
+	if err := p.nextToken(); err != nil {
+		return nil, err
 	}
 
 	then, err := p.Exp()
@@ -355,10 +363,126 @@ func (p *Parser) funcOrIdent() (Exp, error) {
 	case "{":
 		return p.createRecord(sym, tok.pos)
 	default:
-		return &VarExp{
+		varExp := &VarExp{
 			sym: sym,
 			pos: *tok.pos,
+		}
+
+		return p.lvalueOrAssign(varExp)
+	}
+}
+
+func (p *Parser) subscript(firstExp Exp) (Exp, error) {
+	if err := p.nextToken(); err != nil {
+		return nil, err
+	}
+
+	exp, err := p.Exp()
+	if err != nil {
+		return nil, err
+	}
+
+	tok := p.peekToken()
+	if tok.tok != "]" {
+		return nil, ErrUnexpectedTok{pos: tok.pos}
+	}
+
+	if err := p.nextToken(); err != nil {
+		return nil, err
+	}
+
+	subscriptExp := SubscriptExp{
+		subscript: exp,
+		firstExp:  firstExp,
+		pos:       exp.ExpPos(),
+	}
+
+	return p.lvalue(&subscriptExp)
+}
+
+func (p *Parser) fieldExp(exp Exp) (Exp, error) {
+	if err := p.nextToken(); err != nil {
+		return nil, err
+	}
+
+	tok := p.peekToken()
+	if tok.tok != "ident" {
+		return nil, ErrUnexpectedTok{tok.pos}
+	}
+
+	fieldName := p.symbols.Symbol(tok.value.(string))
+	return &FieldExp{
+		firstExp:  exp,
+		fieldName: fieldName,
+		pos:       *tok.pos,
+	}, nil
+}
+
+func (p *Parser) lvalue(exp Exp) (Exp, error) {
+	switch p.peekToken().tok {
+	case "[":
+		return p.subscript(exp)
+	case ".":
+		return p.fieldExp(exp)
+	default:
+		return exp, nil
+	}
+}
+
+func (p *Parser) array(exp *VarExp, size Exp) (Exp, error) {
+	if err := p.nextToken(); err != nil {
+		return nil, err
+	}
+
+	init, err := p.Exp()
+	if err != nil {
+		return nil, err
+	}
+
+	return &ArrExp{
+		init: init,
+		size: size,
+		typ:  exp.sym,
+		pos:  exp.pos,
+	}, nil
+}
+
+func (p *Parser) lvalueOrAssign(exp Exp) (Exp, error) {
+	varExp, err := p.lvalue(exp)
+	if err != nil {
+		return nil, err
+	}
+
+	tok := p.peekToken()
+	switch tok.tok {
+	case "of":
+		if exp, ok := varExp.(*SubscriptExp); ok {
+			if firstExp, ok := exp.firstExp.(*VarExp); ok {
+				return p.array(firstExp, exp.subscript)
+			}
+
+			pos := exp.ExpPos()
+			return nil, ErrUnexpectedTok{&pos}
+		}
+
+		pos := varExp.ExpPos()
+		return nil, ErrUnexpectedTok{&pos}
+	case ":=":
+		if err := p.nextToken(); err != nil {
+			return nil, err
+		}
+
+		exp, err := p.Exp()
+		if err != nil {
+			return nil, err
+		}
+
+		return &AssignExp{
+			exp:      exp,
+			variable: varExp,
 		}, nil
+	default:
+		return varExp, nil
 	}
 }
 
@@ -673,6 +797,10 @@ func (p *Parser) varDecl() (Declaration, error) {
 		return nil, ErrUnexpectedTok{tok.pos}
 	}
 
+	if err := p.nextToken(); err != nil {
+		return nil, err
+	}
+
 	init, err := p.Exp()
 	if err != nil {
 		return nil, err
@@ -689,11 +817,7 @@ func (p *Parser) varDecl() (Declaration, error) {
 
 func (p *Parser) declarations() (Declaration, error) {
 	tok := p.peekToken()
-	if tok.tok != "ident" {
-		return nil, ErrUnexpectedTok{tok.pos}
-	}
-
-	switch tok.value {
+	switch tok.tok {
 	case "function":
 		return p.funcDecl()
 	case "type":
@@ -707,8 +831,7 @@ func (p *Parser) declarations() (Declaration, error) {
 
 func (p *Parser) letExp() (Exp, error) {
 	pos := p.peekToken().pos
-	tok, err := p.peekNext()
-	if err != nil {
+	if err := p.nextToken(); err != nil {
 		return nil, err
 	}
 
@@ -720,7 +843,7 @@ func (p *Parser) letExp() (Exp, error) {
 	decls := []Declaration{decl}
 LOOP:
 	for {
-		switch tok.tok {
+		switch p.peekToken().tok {
 		case "function":
 			fallthrough
 		case "type":
@@ -770,17 +893,33 @@ LOOP:
 		exps = append(exps, exp)
 	}
 
-	seqExp := SequenceExp{
-		seq: exps,
-		pos: firstExpPos,
+	var seqExp *SequenceExp
+	if len(exps) == 1 {
+		if e, ok := exps[0].(*SequenceExp); ok {
+			seqExp = e
+		} else {
+			seqExp = &SequenceExp{
+				seq: exps,
+				pos: firstExpPos,
+			}
+		}
+	} else {
+		seqExp = &SequenceExp{
+			seq: exps,
+			pos: firstExpPos,
+		}
 	}
 
 	if p.peekToken().tok != "end" {
 		return nil, ErrUnexpectedTok{pos: p.peekToken().pos}
 	}
 
+	if err := p.nextToken(); err != nil {
+		return nil, err
+	}
+
 	return &LetExp{
-		body:  &seqExp,
+		body:  seqExp,
 		decls: decls,
 		pos:   *pos,
 	}, nil
@@ -828,6 +967,10 @@ func (p *Parser) seqExp() (Exp, error) {
 		return nil, ErrUnexpectedTok{p.peekToken().pos}
 	}
 
+	if err := p.nextToken(); err != nil {
+		return nil, err
+	}
+
 	return &SequenceExp{
 		seq: seqExp,
 		pos: *pos,
@@ -859,6 +1002,10 @@ func (p *Parser) whileExp() (Exp, error) {
 
 	if p.peekToken().tok != "do" {
 		return nil, ErrUnexpectedTok{p.peekToken().pos}
+	}
+
+	if err := p.nextToken(); err != nil {
+		return nil, err
 	}
 
 	body, err := p.Exp()
