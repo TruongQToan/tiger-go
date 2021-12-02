@@ -13,8 +13,7 @@ type Strings struct {
 
 func NewStrings() *Strings {
 	return &Strings{
-		nextSymbol: 0,
-		strings:    make(map[Symbol]string),
+		strings: make(map[Symbol]string),
 	}
 }
 
