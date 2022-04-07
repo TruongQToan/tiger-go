@@ -1,4 +1,4 @@
-package tiger
+package main
 
 import (
 	"bufio"
@@ -9,19 +9,19 @@ import (
 )
 
 type Lexer struct {
-	buf *bufio.Reader
-	pos *Pos
+	buf     *bufio.Reader
+	pos     *Pos
+	stopped bool
 }
 
 func NewLexer(fn string, buf *bufio.Reader) *Lexer {
 	return &Lexer{
-		buf: buf,
+		buf:     buf,
+		stopped: false,
 		pos: &Pos{
 			fileName: fn,
 			line:     1,
 			col:      1,
-			byte:     0,
-			length:   0,
 		},
 	}
 }
@@ -45,7 +45,6 @@ func (lex *Lexer) advance() error {
 		return err
 	}
 
-	lex.pos.byte++
 	if c == '\n' {
 		lex.pos.col = 1
 		lex.pos.line++
@@ -58,18 +57,33 @@ func (lex *Lexer) advance() error {
 
 func (lex *Lexer) takeWhile(cond func(c byte) bool) (string, error) {
 	buf := strings.Builder{}
-	if c, err := lex.currentChar(); err != nil {
+	c, err := lex.currentChar()
+	if err != nil {
+		if err == io.EOF {
+			return buf.String(), nil
+		}
+
 		return "", err
-	} else if err := buf.WriteByte(c); err != nil {
+	}
+
+	if err := buf.WriteByte(c); err != nil {
 		return "", err
 	}
 
 	if err := lex.advance(); err != nil {
+		if err == io.EOF {
+			return buf.String(), nil
+		}
+
 		return "", err
 	}
 
-	c, err := lex.currentChar()
+	c, err = lex.currentChar()
 	if err != nil {
+		if err == io.EOF {
+			return buf.String(), nil
+		}
+
 		return "", err
 	}
 
@@ -79,11 +93,19 @@ func (lex *Lexer) takeWhile(cond func(c byte) bool) (string, error) {
 		}
 
 		if err := lex.advance(); err != nil {
+			if err == io.EOF {
+				return buf.String(), nil
+			}
+
 			return "", err
 		}
 
 		c, err = lex.currentChar()
 		if err != nil {
+			if err == io.EOF {
+				return buf.String(), nil
+			}
+
 			return "", err
 		}
 	}
@@ -94,8 +116,12 @@ func (lex *Lexer) takeWhile(cond func(c byte) bool) (string, error) {
 func (lex *Lexer) integer() (*Token, error) {
 	pos := *lex.pos
 	numRepr, err := lex.takeWhile(isNumeric)
-	if err != nil && err != io.EOF {
-		return nil, err
+	if err != nil {
+		if err == io.EOF {
+			lex.stopped = true
+		} else {
+			return nil, err
+		}
 	}
 
 	num, err := strconv.ParseInt(numRepr, 10, 64)
@@ -103,7 +129,6 @@ func (lex *Lexer) integer() (*Token, error) {
 		return nil, err
 	}
 
-	pos.length = len(numRepr)
 	return NewInt(num, &pos), nil
 }
 
@@ -112,11 +137,14 @@ func (lex *Lexer) identifier() (*Token, error) {
 	id, err := lex.takeWhile(func(c byte) bool {
 		return isAlphaNumeric(c) || isUnderscore(c)
 	})
-	if err != nil && err != io.EOF {
-		return nil, err
+	if err != nil {
+		if err == io.EOF {
+			lex.stopped = true
+		} else {
+			return nil, err
+		}
 	}
 
-	pos.length = len(id)
 	switch id {
 	case "array":
 		return NewArray(&pos), nil
@@ -169,7 +197,6 @@ func (lex *Lexer) simpleToken(f func(pos *Pos) *Token) (*Token, error) {
 		return nil, err
 	}
 
-	pos.length = 1
 	return f(&pos), nil
 }
 
@@ -189,11 +216,9 @@ func (lex *Lexer) twoCharsToken(nextChar byte, nextToken, defaultToken func(pos 
 			return nil, err
 		}
 
-		pos.length = 2
 		return nextToken(&pos), nil
 	}
 
-	pos.length = 1
 	return defaultToken(&pos), nil
 }
 
@@ -293,14 +318,12 @@ func (lex *Lexer) divOrCmt() (*Token, error) {
 		return nil, nil
 	}
 
-	pos.length = 1
 	return NewDiv(&pos), nil
 }
 
 func (lex *Lexer) string() (*Token, error) {
 	pos := *lex.pos
 	buf := strings.Builder{}
-	startByte := pos.byte
 	if err := lex.advance(); err != nil {
 		return nil, err
 	}
@@ -357,7 +380,6 @@ func (lex *Lexer) string() (*Token, error) {
 				}
 
 				if len(num) != 3 {
-					pos.length = len(num) + 1
 					return nil, fmt.Errorf("invalid escape %+v", pos)
 				} else {
 					num, err := strconv.Atoi(num)
@@ -366,14 +388,12 @@ func (lex *Lexer) string() (*Token, error) {
 					}
 
 					if num > 255 {
-						pos.length = 4
 						return nil, fmt.Errorf("invalid ASCII code %+v", pos)
 					}
 
 					buf.Write([]byte(strconv.Itoa(num)))
 				}
 			} else {
-				pos.length = 2
 				return nil, fmt.Errorf("invalid escape %+v", pos)
 			}
 		} else {
@@ -404,12 +424,15 @@ func (lex *Lexer) string() (*Token, error) {
 		return nil, err
 	}
 
-	pos.length = lex.pos.length - startByte
 	return NewStr(buf.String(), &pos), nil
 }
 
 func (lex *Lexer) Token() (*Token, error) {
 	pos := *lex.pos
+	if lex.stopped {
+		return NewEndOfFile(&pos), nil
+	}
+
 	curChar, err := lex.currentChar()
 	if err != nil {
 		if err == io.EOF {
@@ -493,7 +516,6 @@ func (lex *Lexer) Token() (*Token, error) {
 			return nil, err
 		}
 
-		pos.length = 2
 		return NewNotEqual(&pos), nil
 	case '/':
 		tok, err := lex.divOrCmt()
@@ -510,6 +532,5 @@ func (lex *Lexer) Token() (*Token, error) {
 		return lex.string()
 	}
 
-	pos.length = 1
 	return nil, fmt.Errorf("invalid character %+v", pos)
 }

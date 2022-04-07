@@ -1,7 +1,12 @@
-package tiger
+package main
 
 import (
+	"errors"
 	"strings"
+)
+
+var (
+	errSTNotFound = errors.New("symbol not found in ST")
 )
 
 type Symbol = uint64
@@ -21,27 +26,27 @@ func (s *Strings) Get(sym Symbol) string {
 	return s.strings[sym]
 }
 
-type Symbols struct {
+type ST struct {
 	stack   [][]Symbol
 	strings *Strings
 	table   map[Symbol][]interface{}
 }
 
-func NewSymbols(strings *Strings) *Symbols {
-	symbols := Symbols{
+func NewST(strings *Strings) *ST {
+	st := ST{
 		strings: strings,
 		table:   make(map[Symbol][]interface{}),
 	}
 
-	symbols.BeginScope()
-	return &symbols
+	st.BeginScope()
+	return &st
 }
 
-func (s *Symbols) BeginScope() {
-	s.stack = append(s.stack, make([]Symbol, 0))
+func (s *ST) BeginScope() {
+	s.stack = append(s.stack, make([]Symbol, 0, 100))
 }
 
-func (s *Symbols) EndScope() {
+func (s *ST) EndScope() {
 	if len(s.stack) == 0 {
 		panic("call BeginScope() before EndScope()")
 	}
@@ -50,6 +55,10 @@ func (s *Symbols) EndScope() {
 		v, ok := s.table[sym]
 		if !ok {
 			panic("table does not contain symbol")
+		}
+
+		if len(v) == 0 {
+			panic("table does not contain values")
 		}
 
 		v = v[:len(v)-1]
@@ -61,7 +70,7 @@ func (s *Symbols) EndScope() {
 	s.stack = s.stack[:len(s.stack)-1]
 }
 
-func (s *Symbols) Enter(sym Symbol, data interface{}) {
+func (s *ST) Enter(sym Symbol, data interface{}) {
 	s.table[sym] = append(s.table[sym], data)
 	if len(s.stack) == 0 {
 		panic("call BeginScope() before Enter()")
@@ -70,21 +79,25 @@ func (s *Symbols) Enter(sym Symbol, data interface{}) {
 	s.stack[len(s.stack)-1] = append(s.stack[len(s.stack)-1], sym)
 }
 
-func (s *Symbols) Look(sym Symbol) interface{} {
-	return s.table[sym]
+func (s *ST) Look(sym Symbol) (interface{}, error) {
+	if len(s.table[sym]) == 0 {
+		return nil, errSTNotFound
+	}
+
+	return s.table[sym], nil
 }
 
-func (s *Symbols) Name(sym Symbol) string {
+func (s *ST) Name(sym Symbol) string {
 	return s.strings.strings[sym]
 }
 
-func (s *Symbols) Replace(sym Symbol, data interface{}) {
+func (s *ST) Replace(sym Symbol, data interface{}) {
 	if _, ok := s.table[sym]; ok {
 		s.table[sym] = append(s.table[sym][:len(s.table)-1], data)
 	}
 }
 
-func (s *Symbols) Symbol(str string) Symbol {
+func (s *ST) Symbol(str string) Symbol {
 	for v, s := range s.strings.strings {
 		if strings.EqualFold(s, str) {
 			return v

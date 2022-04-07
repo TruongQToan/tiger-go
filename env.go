@@ -1,66 +1,66 @@
-package tiger
+package main
 
 type FuncInfo struct {
 	name  string
-	args  []SemantType
-	resTy SemantType
+	args  []SemantTy
+	resTy SemantTy
 }
 
-var baseFuncs  = []*FuncInfo{
+var baseFuncs = []*FuncInfo{
 	{
 		name:  "print",
-		args:  []SemantType{&StringSemantType{}},
-		resTy: &UnitSemantType{},
+		args:  []SemantTy{&StringSemantTy{}},
+		resTy: &UnitSemantTy{},
 	},
 	{
 		name:  "printi",
-		args:  []SemantType{&IntSemantType{}},
-		resTy: &UnitSemantType{},
+		args:  []SemantTy{&IntSemantTy{}},
+		resTy: &UnitSemantTy{},
 	},
 	{
 		name:  "flush",
-		args:  []SemantType{},
-		resTy: &UnitSemantType{},
+		args:  []SemantTy{},
+		resTy: &UnitSemantTy{},
 	},
 	{
 		name:  "getchar",
-		args:  []SemantType{},
-		resTy: &StringSemantType{},
+		args:  []SemantTy{},
+		resTy: &StringSemantTy{},
 	},
 	{
 		name:  "ord",
-		args:  []SemantType{&StringSemantType{}},
-		resTy: &IntSemantType{},
+		args:  []SemantTy{&StringSemantTy{}},
+		resTy: &IntSemantTy{},
 	},
 	{
 		name:  "chr",
-		args:  []SemantType{&IntSemantType{}},
-		resTy: &StringSemantType{},
+		args:  []SemantTy{&IntSemantTy{}},
+		resTy: &StringSemantTy{},
 	},
 	{
 		name:  "size",
-		args:  []SemantType{&StringSemantType{}},
-		resTy: &IntSemantType{},
+		args:  []SemantTy{&StringSemantTy{}},
+		resTy: &IntSemantTy{},
 	},
 	{
 		name:  "substring",
-		args:  []SemantType{&StringSemantType{}, &IntSemantType{}, &IntSemantType{}},
-		resTy: &IntSemantType{},
+		args:  []SemantTy{&StringSemantTy{}, &IntSemantTy{}, &IntSemantTy{}},
+		resTy: &IntSemantTy{},
 	},
 	{
 		name:  "concat",
-		args:  []SemantType{&StringSemantType{}, &StringSemantType{}},
-		resTy: &StringSemantType{},
+		args:  []SemantTy{&StringSemantTy{}, &StringSemantTy{}},
+		resTy: &StringSemantTy{},
 	},
 	{
 		name:  "not",
-		args:  []SemantType{&IntSemantType{}},
-		resTy: &IntSemantType{},
+		args:  []SemantTy{&IntSemantTy{}},
+		resTy: &IntSemantTy{},
 	},
 	{
 		name:  "exit",
-		args:  []SemantType{&IntSemantType{}},
-		resTy: &UnitSemantType{},
+		args:  []SemantTy{&IntSemantTy{}},
+		resTy: &UnitSemantTy{},
 	},
 }
 
@@ -69,37 +69,31 @@ type EnvEntry interface {
 }
 
 type VarEntry struct {
-	access Access
-	ty     SemantType
+	ty SemantTy
 }
 
 func (v *VarEntry) IsEnvEntry() {}
 
 type FunEntry struct {
-	level   Level
-	label   Label
-	formals []SemantType
-	Result  SemantType
+	formals []SemantTy
+	Result  SemantTy
 }
 
-func InitBaseTypeEnv(strings *Strings) *Symbols {
-	symbols := NewSymbols(strings)
-	symbols.Enter(symbols.Symbol("int"), IntSemantType{})
-	symbols.Enter(symbols.Symbol("string"), StringSemantType{})
+func InitBaseTypeEnv(strings *Strings) *ST {
+	symbols := NewST(strings)
+	symbols.Enter(symbols.Symbol("int"), IntSemantTy{})
+	symbols.Enter(symbols.Symbol("string"), StringSemantTy{})
 	return symbols
 }
 
-func InitBaseVenv(strings *Strings) *Symbols {
-	symbols := NewSymbols(strings)
+func InitBaseVenv(strings *Strings) *ST {
+	symbols := NewST(strings)
 	for _, finfo := range baseFuncs {
 		symbols.Enter(symbols.Symbol(finfo.name), &FunEntry{
-			level:   ChildLevel{
-				parent: nil,
-				frame:  nil,
-			},
-			label:   0,
-			formals: nil,
-			Result:  nil,
+			formals: finfo.args,
+			Result:  finfo.resTy,
 		})
 	}
+
+	return symbols
 }
