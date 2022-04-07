@@ -1,4 +1,4 @@
-package tiger
+package main
 
 import (
 	"bufio"
@@ -46,7 +46,7 @@ func testFile(t *testing.T, fileName string) {
 	buf := bufio.NewReader(bytes.NewReader(f))
 	lexer := NewLexer(fileName, buf)
 
-	symbols := NewSymbols(NewStrings())
+	symbols := NewST(NewStrings())
 	parser := NewParser(lexer, symbols)
 	exp, err := parser.Parse()
 	require.NoError(t, err)

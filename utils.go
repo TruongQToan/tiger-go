@@ -1,4 +1,4 @@
-package tiger
+package main
 
 func isLower(c byte) bool {
 	return c >= 'a' && c <= 'z'
