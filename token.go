@@ -3,12 +3,12 @@ package main
 import "fmt"
 
 type Token struct {
-	pos   *Pos
+	pos   Pos
 	tok   string
 	value interface{}
 }
 
-func (t *Token) IsEor() bool {
+func (t *Token) IsEof() bool {
 	return t.tok == "eof"
 }
 
@@ -25,7 +25,7 @@ func (t *Token) String() string {
 	return t.tok
 }
 
-func NewIdent(s string, pos *Pos) *Token {
+func NewIdent(s string, pos Pos) *Token {
 	return &Token{
 		tok:   "ident",
 		value: s,
@@ -33,7 +33,7 @@ func NewIdent(s string, pos *Pos) *Token {
 	}
 }
 
-func NewStr(s string, pos *Pos) *Token {
+func NewStr(s string, pos Pos) *Token {
 	return &Token{
 		tok:   "str",
 		value: s,
@@ -41,7 +41,7 @@ func NewStr(s string, pos *Pos) *Token {
 	}
 }
 
-func NewInt(i int64, pos *Pos) *Token {
+func NewInt(i int64, pos Pos) *Token {
 	return &Token{
 		tok:   "int",
 		value: i,
@@ -49,304 +49,304 @@ func NewInt(i int64, pos *Pos) *Token {
 	}
 }
 
-func NewAnd(pos *Pos) *Token {
+func NewAnd(pos Pos) *Token {
 	return &Token{
 		tok: "&",
 		pos: pos,
 	}
 }
-func NewAssign(pos *Pos) *Token {
+func NewAssign(pos Pos) *Token {
 	return &Token{
 		tok: ":=",
 		pos: pos,
 	}
 }
 
-func NewArray(pos *Pos) *Token {
+func NewArray(pos Pos) *Token {
 	return &Token{
 		tok: "array",
 		pos: pos,
 	}
 }
 
-func NewBreak(pos *Pos) *Token {
+func NewBreak(pos Pos) *Token {
 	return &Token{
 		tok: "break",
 		pos: pos,
 	}
 }
 
-func NewClass(pos *Pos) *Token {
+func NewClass(pos Pos) *Token {
 	return &Token{
 		tok: "class",
 		pos: pos,
 	}
 }
 
-func NewCloseCurly(pos *Pos) *Token {
+func NewCloseCurly(pos Pos) *Token {
 	return &Token{
 		tok: "}",
 		pos: pos,
 	}
 }
 
-func NewCloseParen(pos *Pos) *Token {
+func NewCloseParen(pos Pos) *Token {
 	return &Token{
 		tok: ")",
 		pos: pos,
 	}
 }
 
-func NewCloseBrac(pos *Pos) *Token {
+func NewCloseBrac(pos Pos) *Token {
 	return &Token{
 		tok: "]",
 		pos: pos,
 	}
 }
 
-func NewColon(pos *Pos) *Token {
+func NewColon(pos Pos) *Token {
 	return &Token{
 		tok: ":",
 		pos: pos,
 	}
 }
 
-func NewComma(pos *Pos) *Token {
+func NewComma(pos Pos) *Token {
 	return &Token{
 		tok: ",",
 		pos: pos,
 	}
 }
-func NewDo(pos *Pos) *Token {
+func NewDo(pos Pos) *Token {
 	return &Token{
 		tok: "do",
 		pos: pos,
 	}
 }
 
-func NewDot(pos *Pos) *Token {
+func NewDot(pos Pos) *Token {
 	return &Token{
 		tok: ".",
 		pos: pos,
 	}
 }
 
-func NewElse(pos *Pos) *Token {
+func NewElse(pos Pos) *Token {
 	return &Token{
 		tok: "else",
 		pos: pos,
 	}
 }
 
-func NewEnd(pos *Pos) *Token {
+func NewEnd(pos Pos) *Token {
 	return &Token{
 		tok: "end",
 		pos: pos,
 	}
 }
 
-func NewEndOfFile(pos *Pos) *Token {
+func NewEndOfFile(pos Pos) *Token {
 	return &Token{
 		tok: "eof",
 		pos: pos,
 	}
 }
 
-func NewEqual(pos *Pos) *Token {
+func NewEqual(pos Pos) *Token {
 	return &Token{
 		tok: "=",
 		pos: pos,
 	}
 }
 
-func NewExtends(pos *Pos) *Token {
+func NewExtends(pos Pos) *Token {
 	return &Token{
 		tok: "extends",
 		pos: pos,
 	}
 }
 
-func NewFor(pos *Pos) *Token {
+func NewFor(pos Pos) *Token {
 	return &Token{
 		tok: "for",
 		pos: pos,
 	}
 }
 
-func NewFunction(pos *Pos) *Token {
+func NewFunction(pos Pos) *Token {
 	return &Token{
 		tok: "function",
 		pos: pos,
 	}
 }
 
-func NewGreater(pos *Pos) *Token {
+func NewGreater(pos Pos) *Token {
 	return &Token{
 		tok: ">",
 		pos: pos,
 	}
 }
 
-func NewGreaterOrEqual(pos *Pos) *Token {
+func NewGreaterOrEqual(pos Pos) *Token {
 	return &Token{
 		tok: ">=",
 		pos: pos,
 	}
 }
 
-func NewIf(pos *Pos) *Token {
+func NewIf(pos Pos) *Token {
 	return &Token{
 		tok: "if",
 		pos: pos,
 	}
 }
-func NewIn(pos *Pos) *Token {
+func NewIn(pos Pos) *Token {
 	return &Token{
 		tok: "in",
 		pos: pos,
 	}
 }
 
-func NewLesser(pos *Pos) *Token {
+func NewLesser(pos Pos) *Token {
 	return &Token{
 		tok: "<",
 		pos: pos,
 	}
 }
 
-func NewLesserOrEqual(pos *Pos) *Token {
+func NewLesserOrEqual(pos Pos) *Token {
 	return &Token{
 		tok: "<=",
 		pos: pos,
 	}
 }
-func NewLet(pos *Pos) *Token {
+func NewLet(pos Pos) *Token {
 	return &Token{
 		tok: "let",
 		pos: pos,
 	}
 }
 
-func NewMethod(pos *Pos) *Token {
+func NewMethod(pos Pos) *Token {
 	return &Token{
 		tok: "method",
 		pos: pos,
 	}
 }
 
-func NewMinus(pos *Pos) *Token {
+func NewMinus(pos Pos) *Token {
 	return &Token{
 		tok: "-",
 		pos: pos,
 	}
 }
 
-func NewNil(pos *Pos) *Token {
+func NewNil(pos Pos) *Token {
 	return &Token{
 		tok: "nil",
 		pos: pos,
 	}
 }
 
-func NewNotEqual(pos *Pos) *Token {
+func NewNotEqual(pos Pos) *Token {
 	return &Token{
 		tok: "!=",
 		pos: pos,
 	}
 }
 
-func NewOf(pos *Pos) *Token {
+func NewOf(pos Pos) *Token {
 	return &Token{
 		tok: "of",
 		pos: pos,
 	}
 }
 
-func NewOpenCurly(pos *Pos) *Token {
+func NewOpenCurly(pos Pos) *Token {
 	return &Token{
 		tok: "{",
 		pos: pos,
 	}
 }
 
-func NewOpenParen(pos *Pos) *Token {
+func NewOpenParen(pos Pos) *Token {
 	return &Token{
 		tok: "(",
 		pos: pos,
 	}
 }
 
-func NewOpenBrac(pos *Pos) *Token {
+func NewOpenBrac(pos Pos) *Token {
 	return &Token{
 		tok: "[",
 		pos: pos,
 	}
 }
 
-func NewOr(pos *Pos) *Token {
+func NewOr(pos Pos) *Token {
 	return &Token{
 		tok: "|",
 		pos: pos,
 	}
 }
 
-func NewPlus(pos *Pos) *Token {
+func NewPlus(pos Pos) *Token {
 	return &Token{
 		tok: "+",
 		pos: pos,
 	}
 }
 
-func NewSemicolon(pos *Pos) *Token {
+func NewSemicolon(pos Pos) *Token {
 	return &Token{
 		tok: ";",
 		pos: pos,
 	}
 }
 
-func NewDiv(pos *Pos) *Token {
+func NewDiv(pos Pos) *Token {
 	return &Token{
 		tok: "/",
 		pos: pos,
 	}
 }
 
-func NewTimes(pos *Pos) *Token {
+func NewTimes(pos Pos) *Token {
 	return &Token{
 		tok: "*",
 		pos: pos,
 	}
 }
 
-func NewThen(pos *Pos) *Token {
+func NewThen(pos Pos) *Token {
 	return &Token{
 		tok: "then",
 		pos: pos,
 	}
 }
 
-func NewTo(pos *Pos) *Token {
+func NewTo(pos Pos) *Token {
 	return &Token{
 		tok: "to",
 		pos: pos,
 	}
 }
 
-func NewType(pos *Pos) *Token {
+func NewType(pos Pos) *Token {
 	return &Token{
 		tok: "type",
 		pos: pos,
 	}
 }
 
-func NewVar(pos *Pos) *Token {
+func NewVar(pos Pos) *Token {
 	return &Token{
 		tok: "var",
 		pos: pos,
 	}
 }
 
-func NewWhile(pos *Pos) *Token {
+func NewWhile(pos Pos) *Token {
 	return &Token{
 		tok: "while",
 		pos: pos,

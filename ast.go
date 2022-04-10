@@ -71,7 +71,7 @@ func (op Operator) Repr() string {
 	}
 }
 
-func (op Operator) String(symbols *ST, strBuilder *strings.Builder, level int) {
+func (op Operator) String(_ *ST, strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level)
 	strBuilder.WriteString(op.Repr() + "\n")
 }
@@ -300,7 +300,7 @@ func (e *ArrExp) String(symbols *ST, strBuilder *strings.Builder, level int) {
 
 type AssignExp struct {
 	exp      Exp
-	variable Exp
+	variable Var
 }
 
 func (e *AssignExp) String(symbols *ST, strBuilder *strings.Builder, level int) {
@@ -315,7 +315,7 @@ func (e *AssignExp) String(symbols *ST, strBuilder *strings.Builder, level int) 
 }
 
 func (e *AssignExp) ExpPos() Pos {
-	return e.variable.ExpPos()
+	return e.variable.VarPos()
 }
 
 type BreakExp struct {
@@ -537,41 +537,18 @@ func (e *StrExp) ExpPos() Pos {
 	return e.pos
 }
 
-type SubscriptExp struct {
-	subscript Exp
-	firstExp  Exp
-	pos       Pos
-}
-
-func (e *SubscriptExp) String(symbols *ST, strBuilder *strings.Builder, level int) {
-	indent(strBuilder, level)
-	strBuilder.WriteString("SubscriptExp\n")
-	indent(strBuilder, level+1)
-	strBuilder.WriteString("FirstExp\n")
-	e.firstExp.String(symbols, strBuilder, level+2)
-	indent(strBuilder, level+1)
-	strBuilder.WriteString("Subscript\n")
-	e.subscript.String(symbols, strBuilder, level+2)
-}
-
-func (e *SubscriptExp) ExpPos() Pos {
-	return e.pos
-}
-
 type VarExp struct {
-	sym Symbol
-	pos Pos
+	v Var
 }
 
 func (e *VarExp) String(symbols *ST, strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level)
 	strBuilder.WriteString("VarExp\n")
-	indent(strBuilder, level+1)
-	strBuilder.WriteString(symbols.Name(e.sym) + "\n")
+	e.v.String(symbols, strBuilder, level+1)
 }
 
 func (e *VarExp) ExpPos() Pos {
-	return e.pos
+	return e.v.VarPos()
 }
 
 type WhileExp struct {
@@ -599,4 +576,67 @@ func indent(builder *strings.Builder, level int) {
 	for i := 0; i < level; i++ {
 		builder.WriteString("  ")
 	}
+}
+
+type Var interface {
+	String
+	VarPos() Pos
+}
+
+type SimpleVar struct {
+	symbol Symbol
+	pos    Pos
+}
+
+func (v *SimpleVar) String(symbols *ST, strBuilder *strings.Builder, level int) {
+	indent(strBuilder, level)
+	strBuilder.WriteString("SimpleVar\n")
+	indent(strBuilder, level+1)
+	strBuilder.WriteString(fmt.Sprintf("%s\n", symbols.strings.Get(v.symbol)))
+}
+
+func (v *SimpleVar) VarPos() Pos {
+	return v.pos
+}
+
+type FieldVar struct {
+	variable Var
+	field    Symbol
+	pos      Pos
+}
+
+func (v *FieldVar) String(symbols *ST, strBuilder *strings.Builder, level int) {
+	indent(strBuilder, level)
+	strBuilder.WriteString("FieldVar\n")
+	indent(strBuilder, level+1)
+	strBuilder.WriteString("Var\n")
+	v.variable.String(symbols, strBuilder, level+2)
+	indent(strBuilder, level+1)
+	strBuilder.WriteString("Field\n")
+	strBuilder.WriteString(fmt.Sprintf("%s\n", symbols.strings.Get(v.field)))
+}
+
+func (v *FieldVar) VarPos() Pos {
+	return v.pos
+}
+
+type SubscriptionVar struct {
+	variable Var
+	exp      Exp
+	pos      Pos
+}
+
+func (v *SubscriptionVar) String(symbols *ST, strBuilder *strings.Builder, level int) {
+	indent(strBuilder, level)
+	strBuilder.WriteString("SubscriptionVar\n")
+	indent(strBuilder, level+1)
+	strBuilder.WriteString("Var\n")
+	v.variable.String(symbols, strBuilder, level+2)
+	indent(strBuilder, level+1)
+	strBuilder.WriteString("Subscript\n")
+	v.exp.String(symbols, strBuilder, level+2)
+}
+
+func (v *SubscriptionVar) VarPos() Pos {
+	return v.pos
 }

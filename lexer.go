@@ -129,7 +129,7 @@ func (lex *Lexer) integer() (*Token, error) {
 		return nil, err
 	}
 
-	return NewInt(num, &pos), nil
+	return NewInt(num, pos), nil
 }
 
 func (lex *Lexer) identifier() (*Token, error) {
@@ -147,60 +147,60 @@ func (lex *Lexer) identifier() (*Token, error) {
 
 	switch id {
 	case "array":
-		return NewArray(&pos), nil
+		return NewArray(pos), nil
 	case "break":
-		return NewBreak(&pos), nil
+		return NewBreak(pos), nil
 	case "class":
-		return NewClass(&pos), nil
+		return NewClass(pos), nil
 	case "do":
-		return NewDo(&pos), nil
+		return NewDo(pos), nil
 	case "else":
-		return NewElse(&pos), nil
+		return NewElse(pos), nil
 	case "end":
-		return NewEnd(&pos), nil
+		return NewEnd(pos), nil
 	case "extends":
-		return NewExtends(&pos), nil
+		return NewExtends(pos), nil
 	case "for":
-		return NewFor(&pos), nil
+		return NewFor(pos), nil
 	case "function":
-		return NewFunction(&pos), nil
+		return NewFunction(pos), nil
 	case "if":
-		return NewIf(&pos), nil
+		return NewIf(pos), nil
 	case "in":
-		return NewIn(&pos), nil
+		return NewIn(pos), nil
 	case "let":
-		return NewLet(&pos), nil
+		return NewLet(pos), nil
 	case "method":
-		return NewMethod(&pos), nil
+		return NewMethod(pos), nil
 	case "nil":
-		return NewNil(&pos), nil
+		return NewNil(pos), nil
 	case "of":
-		return NewOf(&pos), nil
+		return NewOf(pos), nil
 	case "then":
-		return NewThen(&pos), nil
+		return NewThen(pos), nil
 	case "to":
-		return NewTo(&pos), nil
+		return NewTo(pos), nil
 	case "type":
-		return NewType(&pos), nil
+		return NewType(pos), nil
 	case "var":
-		return NewVar(&pos), nil
+		return NewVar(pos), nil
 	case "while":
-		return NewWhile(&pos), nil
+		return NewWhile(pos), nil
 	}
 
-	return NewIdent(id, &pos), nil
+	return NewIdent(id, pos), nil
 }
 
-func (lex *Lexer) simpleToken(f func(pos *Pos) *Token) (*Token, error) {
+func (lex *Lexer) simpleToken(f func(pos Pos) *Token) (*Token, error) {
 	pos := *lex.pos
 	if err := lex.advance(); err != nil {
 		return nil, err
 	}
 
-	return f(&pos), nil
+	return f(pos), nil
 }
 
-func (lex *Lexer) twoCharsToken(nextChar byte, nextToken, defaultToken func(pos *Pos) *Token) (*Token, error) {
+func (lex *Lexer) twoCharsToken(nextChar byte, nextToken, defaultToken func(pos Pos) *Token) (*Token, error) {
 	pos := *lex.pos
 	if err := lex.advance(); err != nil {
 		return nil, err
@@ -216,10 +216,10 @@ func (lex *Lexer) twoCharsToken(nextChar byte, nextToken, defaultToken func(pos 
 			return nil, err
 		}
 
-		return nextToken(&pos), nil
+		return nextToken(pos), nil
 	}
 
-	return defaultToken(&pos), nil
+	return defaultToken(pos), nil
 }
 
 func (lex *Lexer) colonOrEqual() (*Token, error) {
@@ -318,7 +318,7 @@ func (lex *Lexer) divOrCmt() (*Token, error) {
 		return nil, nil
 	}
 
-	return NewDiv(&pos), nil
+	return NewDiv(pos), nil
 }
 
 func (lex *Lexer) string() (*Token, error) {
@@ -424,19 +424,19 @@ func (lex *Lexer) string() (*Token, error) {
 		return nil, err
 	}
 
-	return NewStr(buf.String(), &pos), nil
+	return NewStr(buf.String(), pos), nil
 }
 
 func (lex *Lexer) Token() (*Token, error) {
 	pos := *lex.pos
 	if lex.stopped {
-		return NewEndOfFile(&pos), nil
+		return NewEndOfFile(pos), nil
 	}
 
 	curChar, err := lex.currentChar()
 	if err != nil {
 		if err == io.EOF {
-			return NewEndOfFile(&pos), nil
+			return NewEndOfFile(pos), nil
 		}
 
 		return nil, err
@@ -516,7 +516,7 @@ func (lex *Lexer) Token() (*Token, error) {
 			return nil, err
 		}
 
-		return NewNotEqual(&pos), nil
+		return NewNotEqual(pos), nil
 	case '/':
 		tok, err := lex.divOrCmt()
 		if err != nil {

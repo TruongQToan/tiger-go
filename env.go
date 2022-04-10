@@ -79,10 +79,12 @@ type FunEntry struct {
 	Result  SemantTy
 }
 
+func (v *FunEntry) IsEnvEntry() {}
+
 func InitBaseTypeEnv(strings *Strings) *ST {
 	symbols := NewST(strings)
-	symbols.Enter(symbols.Symbol("int"), IntSemantTy{})
-	symbols.Enter(symbols.Symbol("string"), StringSemantTy{})
+	symbols.Enter(symbols.Symbol("int"), &IntSemantTy{})
+	symbols.Enter(symbols.Symbol("string"), &StringSemantTy{})
 	return symbols
 }
 

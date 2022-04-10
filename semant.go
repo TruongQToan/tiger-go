@@ -14,7 +14,7 @@ func NewSemant(strings *Strings, vent, tenv *ST) *Semant {
 	return &Semant{
 		strings: strings,
 		venv:    vent,
-		tenv:    vent,
+		tenv:    tenv,
 	}
 }
 
@@ -26,10 +26,6 @@ func (s *Semant) TransProg(exp Exp) error {
 
 	fmt.Printf("Parse type %s\n", ty.TypeName())
 	return nil
-}
-
-func (s *Semant) transVar() {
-
 }
 
 func (s *Semant) actualTy(ty SemantTy, pos Pos) (SemantTy, error) {
@@ -50,6 +46,25 @@ func (s *Semant) actualTy(ty SemantTy, pos Pos) (SemantTy, error) {
 	default:
 		return ty, nil
 	}
+}
+
+func (s *Semant) transVar(variable Var) (TransExp, SemantTy, error) {
+	switch v := variable.(type) {
+	case *SimpleVar:
+		entry, err := s.venv.Look(v.symbol)
+		if err == errSTNotFound {
+			return struct{}{}, nil, undefinedVarErr(s.strings.Get(v.symbol), v.VarPos())
+		}
+
+		if e, ok := entry.(*VarEntry); !ok {
+			return struct{}{}, e.ty, nil
+		} else {
+			return struct{}{}, nil, expectedVarButFoundFunErr(s.strings.Get(v.symbol), v.VarPos())
+		}
+	}
+
+	// TODO: update this
+	return struct{}{}, nil, nil
 }
 
 func (s *Semant) transExp(exp Exp) (TransExp, SemantTy, error) {
@@ -140,6 +155,10 @@ func (s *Semant) transExp(exp Exp) (TransExp, SemantTy, error) {
 
 	case *NilExp:
 		return struct{}{}, &NilSemantTy{}, nil
+
+	case *VarExp:
+		return s.transVar(v.v)
+
 	}
 
 	return struct{}{}, nil, nil
@@ -151,8 +170,4 @@ func (s *Semant) transDec() {
 
 func (s *Semant) transTy() {
 
-}
-
-func mismatchTypeErr(expected, actual SemantTy, pos Pos) error {
-	return fmt.Errorf("expected %s, but found %s at %s", expected.TypeName(), actual.TypeName(), pos.String())
 }

@@ -29,13 +29,13 @@ func (s *Strings) Get(sym Symbol) string {
 type ST struct {
 	stack   [][]Symbol
 	strings *Strings
-	table   map[Symbol][]interface{}
+	table   map[Symbol][]EnvEntry
 }
 
 func NewST(strings *Strings) *ST {
 	st := ST{
 		strings: strings,
-		table:   make(map[Symbol][]interface{}),
+		table:   make(map[Symbol][]EnvEntry),
 	}
 
 	st.BeginScope()
@@ -70,7 +70,7 @@ func (s *ST) EndScope() {
 	s.stack = s.stack[:len(s.stack)-1]
 }
 
-func (s *ST) Enter(sym Symbol, data interface{}) {
+func (s *ST) Enter(sym Symbol, data EnvEntry) {
 	s.table[sym] = append(s.table[sym], data)
 	if len(s.stack) == 0 {
 		panic("call BeginScope() before Enter()")
@@ -79,19 +79,19 @@ func (s *ST) Enter(sym Symbol, data interface{}) {
 	s.stack[len(s.stack)-1] = append(s.stack[len(s.stack)-1], sym)
 }
 
-func (s *ST) Look(sym Symbol) (interface{}, error) {
+func (s *ST) Look(sym Symbol) (EnvEntry, error) {
 	if len(s.table[sym]) == 0 {
 		return nil, errSTNotFound
 	}
 
-	return s.table[sym], nil
+	return s.table[sym][len(s.table[sym])-1], nil
 }
 
 func (s *ST) Name(sym Symbol) string {
 	return s.strings.strings[sym]
 }
 
-func (s *ST) Replace(sym Symbol, data interface{}) {
+func (s *ST) Replace(sym Symbol, data EnvEntry) {
 	if _, ok := s.table[sym]; ok {
 		s.table[sym] = append(s.table[sym][:len(s.table)-1], data)
 	}
