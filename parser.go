@@ -3,14 +3,14 @@ package main
 type Parser struct {
 	lexer     *Lexer
 	lookahead *Token
-	symbols   *ST
+	strings   *Strings
 }
 
-func NewParser(lexer *Lexer, symbols *ST) *Parser {
+func NewParser(lexer *Lexer, strs *Strings) *Parser {
 	return &Parser{
 		lexer:     lexer,
 		lookahead: nil,
-		symbols:   symbols,
+		strings:   strs,
 	}
 }
 
@@ -72,7 +72,7 @@ func (p *Parser) forExp() (Exp, error) {
 		panic("type of identity must be a string")
 	}
 
-	sym := p.symbols.Symbol(varName)
+	sym := p.strings.Symbol(varName)
 	itVar := &SimpleVar{
 		symbol: sym,
 		pos:    tok.pos,
@@ -136,7 +136,7 @@ func (p *Parser) forExp() (Exp, error) {
 		return nil, err
 	}
 
-	endSymbol := p.symbols.Symbol(varName + "_end")
+	endSymbol := p.strings.Symbol(varName + "_end")
 	declarations := []Declaration{
 		&VarDecl{
 			name: sym,
@@ -286,7 +286,7 @@ func (p *Parser) funcArgs() ([]Exp, error) {
 func (p *Parser) oneField() (*RecordField, error) {
 	tok := p.peekToken()
 	name := tok.value.(string)
-	sym := p.symbols.Symbol(name)
+	sym := p.strings.Symbol(name)
 	pos := tok.pos
 
 	tok, err := p.peekNext()
@@ -377,7 +377,7 @@ func (p *Parser) createRecord(ty Symbol, pos Pos) (Exp, error) {
 func (p *Parser) funcOrIdent() (Exp, error) {
 	tok := p.peekToken()
 	name := tok.value.(string)
-	sym := p.symbols.Symbol(name)
+	sym := p.strings.Symbol(name)
 
 	if err := p.nextToken(); err != nil {
 		return nil, err
@@ -423,7 +423,7 @@ func (p *Parser) funcOrIdent() (Exp, error) {
 	}
 }
 
-func (p *Parser) subscript(v Var) (Var, error) {
+func (p *Parser) lvalueSubscript(v Var) (Var, error) {
 	if err := p.nextToken(); err != nil {
 		return nil, err
 	}
@@ -446,16 +446,14 @@ func (p *Parser) subscript(v Var) (Var, error) {
 		return nil, err
 	}
 
-	subscriptExp := SubscriptionVar{
+	return &SubscriptionVar{
 		variable: v,
 		exp:      exp,
 		pos:      exp.ExpPos(),
-	}
-
-	return p.lvalue(&subscriptExp)
+	}, nil
 }
 
-func (p *Parser) fieldVar(v Var) (Var, error) {
+func (p *Parser) lvalueField(v Var) (Var, error) {
 	if err := p.nextToken(); err != nil {
 		return nil, err
 	}
@@ -473,25 +471,25 @@ func (p *Parser) fieldVar(v Var) (Var, error) {
 		return nil, err
 	}
 
-	return p.lvalue(&FieldVar{
+	return &FieldVar{
 		variable: v,
-		field:    p.symbols.Symbol(tok.value.(string)),
+		field:    p.strings.Symbol(tok.value.(string)),
 		pos:      v.VarPos(),
-	})
+	}, nil
 }
 
 func (p *Parser) lvalue(v Var) (Var, error) {
 	switch p.peekToken().tok {
 	case "[":
-		return p.subscript(v)
+		return p.lvalueSubscript(v)
 	case ".":
-		return p.fieldVar(v)
+		return p.lvalueField(v)
 	default:
 		return v, nil
 	}
 }
 
-func (p *Parser) array(exp *VarExp, size Exp) (Exp, error) {
+func (p *Parser) array(t Symbol, size Exp, pos Pos) (Exp, error) {
 	if err := p.nextToken(); err != nil {
 		return nil, err
 	}
@@ -508,13 +506,13 @@ func (p *Parser) array(exp *VarExp, size Exp) (Exp, error) {
 	return &ArrExp{
 		init: init,
 		size: size,
-		typ:  exp.sym,
-		pos:  exp.pos,
+		typ:  t,
+		pos:  pos,
 	}, nil
 }
 
 func (p *Parser) lvalueOrAssign(v Var) (Exp, error) {
-	varExp, err := p.lvalue(v)
+	v1, err := p.lvalue(v)
 	if err != nil {
 		return nil, err
 	}
@@ -522,17 +520,17 @@ func (p *Parser) lvalueOrAssign(v Var) (Exp, error) {
 	tok := p.peekToken()
 	switch tok.tok {
 	case "of":
-		if exp, ok := varExp.(*SubscriptExp); ok {
-			if firstExp, ok := exp.firstExp.(*VarExp); ok {
-				return p.array(firstExp, exp.subscript)
-			}
-
-			pos := exp.ExpPos()
-			return nil, ErrUnexpectedTok{&pos}
+		v2, ok := v1.(*SubscriptionVar)
+		if !ok {
+			return nil, unexpectedTokErr(v2.pos)
 		}
 
-		pos := varExp.ExpPos()
-		return nil, ErrUnexpectedTok{&pos}
+		v3, ok := v2.variable.(*SimpleVar)
+		if !ok {
+			return nil, unexpectedTokErr(v3.pos)
+		}
+
+		return p.array(v3.symbol, v2.exp, v.VarPos())
 	case ":=":
 		if err := p.nextToken(); err != nil {
 			return nil, err
@@ -549,10 +547,10 @@ func (p *Parser) lvalueOrAssign(v Var) (Exp, error) {
 
 		return &AssignExp{
 			exp:      exp,
-			variable: varExp,
+			variable: v1,
 		}, nil
 	default:
-		return varExp, nil
+		return &VarExp{v: v1}, nil
 	}
 }
 
@@ -583,7 +581,7 @@ func (p *Parser) optionalType() (Symbol, error) {
 		return 0, unexpectedTokErr(tok.pos)
 	}
 
-	return p.symbols.Symbol(tok.value.(string)), p.nextToken()
+	return p.strings.Symbol(tok.value.(string)), p.nextToken()
 }
 
 func (p *Parser) fieldDecl() (*Field, error) {
@@ -594,7 +592,7 @@ func (p *Parser) fieldDecl() (*Field, error) {
 
 	pos := tok.pos
 
-	varSym := p.symbols.Symbol(tok.value.(string))
+	varSym := p.strings.Symbol(tok.value.(string))
 	tok, err := p.peekNext()
 	if err != nil {
 		return nil, err
@@ -613,7 +611,7 @@ func (p *Parser) fieldDecl() (*Field, error) {
 		return nil, unexpectedTokErr(tok.pos)
 	}
 
-	typSym := p.symbols.Symbol(tok.value.(string))
+	typSym := p.strings.Symbol(tok.value.(string))
 	return &Field{
 		name:   varSym,
 		escape: false,
@@ -665,7 +663,7 @@ func (p *Parser) funcDecl() (*FuncDecl, error) {
 		return nil, unexpectedTokErr(ident.pos)
 	}
 
-	functionNameSym := p.symbols.Symbol(ident.value.(string))
+	functionNameSym := p.strings.Symbol(ident.value.(string))
 
 	openCur, err := p.peekNext()
 	if err != nil {
@@ -767,7 +765,7 @@ func (p *Parser) arrayTy() (Ty, error) {
 		return nil, unexpectedTokErr(tok.pos)
 	}
 
-	sym := p.symbols.Symbol(tok.value.(string))
+	sym := p.strings.Symbol(tok.value.(string))
 	return &ArrayTy{
 		ty:  sym,
 		pos: pos,
@@ -806,7 +804,7 @@ func (p *Parser) recTy() (Ty, error) {
 func (p *Parser) nameTy() (Ty, error) {
 	tyName := p.peekToken().value.(string)
 	pos := p.peekToken().pos
-	tySym := p.symbols.Symbol(tyName)
+	tySym := p.strings.Symbol(tyName)
 	return &NameTy{
 		ty:  tySym,
 		pos: pos,
@@ -828,7 +826,7 @@ func (p *Parser) tyDecl() (Declaration, error) {
 		return nil, unexpectedTokErr(tok.pos)
 	}
 
-	tyName := p.symbols.Symbol(tok.value.(string))
+	tyName := p.strings.Symbol(tok.value.(string))
 
 	tok, err := p.peekNext()
 	if err != nil {
@@ -844,9 +842,7 @@ func (p *Parser) tyDecl() (Declaration, error) {
 		return nil, err
 	}
 
-	var (
-		ty Ty
-	)
+	var ty Ty
 
 	switch tok.tok {
 	case "array":
@@ -859,9 +855,17 @@ func (p *Parser) tyDecl() (Declaration, error) {
 		return nil, unexpectedTokErr(tok.pos)
 	}
 
+	if err := p.nextToken(); err != nil {
+		return nil, err
+	}
+
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
+	}
+
 	return &TypeDecl{
 		tyName: tyName,
-		typ:    ty,
+		ty:     ty,
 		pos:    pos,
 	}, nil
 }
@@ -884,7 +888,8 @@ func (p *Parser) varDecl() (Declaration, error) {
 	if p.lookahead.IsEof() {
 		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
-	varName := p.symbols.Symbol(tok.value.(string))
+
+	varName := p.strings.Symbol(tok.value.(string))
 	ty, err := p.optionalType()
 	if err != nil {
 		return nil, err
@@ -902,6 +907,7 @@ func (p *Parser) varDecl() (Declaration, error) {
 	if p.lookahead.IsEof() {
 		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
+
 	init, err := p.Exp()
 	if err != nil {
 		return nil, err
@@ -976,6 +982,7 @@ LOOP:
 	if p.lookahead.IsEof() {
 		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
+
 	exp, err := p.Exp()
 	if err != nil {
 		return nil, err
@@ -984,7 +991,7 @@ LOOP:
 	firstExpPos := exp.ExpPos()
 
 	exps := []Exp{exp}
-	for true {
+	for {
 		if p.peekToken().tok != ";" {
 			break
 		}
@@ -1030,9 +1037,6 @@ LOOP:
 		return nil, err
 	}
 
-	if p.lookahead.IsEof() {
-		return nil, unexpectedEofErr(p.lookahead.pos)
-	}
 	return &LetExp{
 		body:  seqExp,
 		decls: decls,

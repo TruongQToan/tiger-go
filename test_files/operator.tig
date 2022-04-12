@@ -1,1 +1,7 @@
-"abc"
+let
+type a = string
+type c = a
+var s: c := 3
+in
+s + 3
+end

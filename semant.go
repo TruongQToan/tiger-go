@@ -5,12 +5,12 @@ import (
 )
 
 type Semant struct {
-	venv    *ST
-	tenv    *ST
+	venv    *VarST
+	tenv    *TypeST
 	strings *Strings
 }
 
-func NewSemant(strings *Strings, vent, tenv *ST) *Semant {
+func NewSemant(strings *Strings, vent *VarST, tenv *TypeST) *Semant {
 	return &Semant{
 		strings: strings,
 		venv:    vent,
@@ -32,7 +32,7 @@ func (s *Semant) actualTy(ty SemantTy, pos Pos) (SemantTy, error) {
 	switch v := ty.(type) {
 	case *NameSemantTy:
 		if v.baseTy == nil {
-			return nil, fmt.Errorf("undefined type %s at %s", s.strings.Get(v.name), pos.String())
+			return nil, typeNotFoundErr(v.name, pos)
 		}
 
 		return s.actualTy(v.baseTy, pos)
@@ -56,7 +56,7 @@ func (s *Semant) transVar(variable Var) (TransExp, SemantTy, error) {
 			return struct{}{}, nil, undefinedVarErr(s.strings.Get(v.symbol), v.VarPos())
 		}
 
-		if e, ok := entry.(*VarEntry); !ok {
+		if e, ok := entry.(*VarEntry); ok {
 			return struct{}{}, e.ty, nil
 		} else {
 			return struct{}{}, nil, expectedVarButFoundFunErr(s.strings.Get(v.symbol), v.VarPos())
@@ -159,15 +159,103 @@ func (s *Semant) transExp(exp Exp) (TransExp, SemantTy, error) {
 	case *VarExp:
 		return s.transVar(v.v)
 
+	case *SequenceExp:
+		return s.transExp(v.seq[len(v.seq)-1])
+
+	case *LetExp:
+		for _, decl := range v.decls {
+			if err := s.transDec(decl); err != nil {
+				return struct{}{}, nil, err
+			}
+		}
+
+		return s.transExp(v.body)
 	}
 
 	return struct{}{}, nil, nil
 }
 
-func (s *Semant) transDec() {
+func (s *Semant) transDec(decl Declaration) error {
+	switch v := decl.(type) {
+	case *VarDecl:
+		_, ty, err := s.transExp(v.init)
+		if err != nil {
+			return err
+		}
 
+		if v.typ == 0 {
+			// var id := expr
+			switch ty.(type) {
+			case *NilSemantTy:
+				return fmt.Errorf("cannot use nil here")
+			default:
+				s.venv.Enter(v.name, &VarEntry{
+					ty: ty,
+				})
+				return nil
+			}
+		}
+
+		tentry, err := s.tenv.Look(v.typ)
+		if err != nil {
+			if err == errSTNotFound {
+				return typeNotFoundErr(s.tenv.Name(v.typ), v.pos)
+			}
+
+			return err
+		}
+
+		tentry, ok := tentry.(SemantTy)
+		if !ok {
+			panic("entry of type ST must be SemantTy")
+		}
+
+		actualTy, err := s.actualTy(tentry, v.pos)
+		if err != nil {
+			return err
+		}
+
+		if !isSameType(actualTy, ty) {
+			return typeMismatchWhenDeclErr(actualTy, ty, v.init.ExpPos())
+		}
+
+		s.venv.Enter(v.name, &VarEntry{
+			ty: ty,
+		})
+		return nil
+	case *TypeDecl:
+		ty, err := s.transTy(v.ty)
+		if err != nil {
+			return err
+		}
+
+		s.tenv.Enter(v.tyName, ty)
+		return nil
+	}
+
+	panic("NOT IMPLEMENTED")
 }
 
-func (s *Semant) transTy() {
+// transTy translates type expressions as found in the abstract syntax to the digested type descriptions that we
+// will put into env
+func (s *Semant) transTy(ty Ty) (SemantTy, error) {
+	switch v := ty.(type) {
+	case *NameTy:
+		baseTy, err := s.tenv.Look(v.ty)
+		if err != nil {
+			if err == errSTNotFound {
+				return nil, baseTypeNotFoundErr(s.strings.Get(v.ty), v.TyPos())
+			}
 
+			return nil, err
+		}
+
+		return &NameSemantTy{
+			baseTy:  baseTy,
+			nameSym: v.ty,
+			name:    s.strings.Get(v.ty),
+		}, nil
+	}
+
+	panic("NOT IMPLEMENTED")
 }

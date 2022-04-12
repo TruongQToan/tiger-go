@@ -81,17 +81,17 @@ type FunEntry struct {
 
 func (v *FunEntry) IsEnvEntry() {}
 
-func InitBaseTypeEnv(strings *Strings) *ST {
-	symbols := NewST(strings)
-	symbols.Enter(symbols.Symbol("int"), &IntSemantTy{})
-	symbols.Enter(symbols.Symbol("string"), &StringSemantTy{})
+func InitBaseTypeEnv(strs *Strings) *TypeST {
+	symbols := NewTypeST(strs)
+	symbols.Enter(strs.Symbol("int"), &IntSemantTy{})
+	symbols.Enter(strs.Symbol("string"), &StringSemantTy{})
 	return symbols
 }
 
-func InitBaseVenv(strings *Strings) *ST {
-	symbols := NewST(strings)
+func InitBaseVarEnv(strs *Strings) *VarST {
+	symbols := NewVarST(strs)
 	for _, finfo := range baseFuncs {
-		symbols.Enter(symbols.Symbol(finfo.name), &FunEntry{
+		symbols.Enter(strs.Symbol(finfo.name), &FunEntry{
 			formals: finfo.args,
 			Result:  finfo.resTy,
 		})
