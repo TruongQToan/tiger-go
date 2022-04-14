@@ -235,8 +235,20 @@ func (t *NameTy) String(strs *Strings, strBuilder *strings.Builder, level int) {
 }
 
 type RecordTy struct {
-	ty  []*Field
-	pos Pos
+	fields []*Field
+	pos    Pos
+}
+
+func (t *RecordTy) HasDuplicateField() bool {
+	for i := range t.fields {
+		for j := range t.fields {
+			if i != j && t.fields[i].name == t.fields[j].name {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func (t *RecordTy) TyPos() Pos {
@@ -246,7 +258,7 @@ func (t *RecordTy) TyPos() Pos {
 func (t *RecordTy) String(strs *Strings, strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level)
 	strBuilder.WriteString("RecordType\n")
-	for _, field := range t.ty {
+	for _, field := range t.fields {
 		field.String(strs, strBuilder, level+1)
 	}
 }

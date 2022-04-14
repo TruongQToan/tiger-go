@@ -1,7 +1,7 @@
 let
-type a = string
-type c = a
-var s: c := 3
+var N := 8
+type intArray = array of int
+var diag := intArray [ N ] of 0
 in
-s + 3
+diag
 end

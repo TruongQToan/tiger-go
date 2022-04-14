@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 )
 
 type Semant struct {
@@ -42,7 +43,7 @@ func (s *Semant) actualTy(ty SemantTy, pos Pos) (SemantTy, error) {
 			return nil, err
 		}
 
-		return &ArrSemantTy{baseTy: baseTy}, nil
+		return &ArrSemantTy{baseTy: baseTy, u: rand.Int63()}, nil
 	default:
 		return ty, nil
 	}
@@ -159,6 +160,44 @@ func (s *Semant) transExp(exp Exp) (TransExp, SemantTy, error) {
 	case *VarExp:
 		return s.transVar(v.v)
 
+	case *ArrExp:
+		ty, err := s.tenv.Look(v.typ)
+		if err != nil {
+			if err == errSTNotFound {
+				return struct{}{}, nil, typeNotFoundErr(ty.TypeName(), v.ExpPos())
+			}
+
+			return struct{}{}, nil, err
+		}
+
+		aty, ok := ty.(*ArrSemantTy)
+		if !ok {
+			return struct{}{}, nil, typeMismatchWhenDeclErr(&ArrSemantTy{}, ty, v.ExpPos())
+		}
+
+		_, sTy, err := s.transExp(v.size)
+		if err != nil {
+			return struct{}{}, nil, err
+		}
+
+		_, ok = sTy.(*IntSemantTy)
+		if !ok {
+			return struct{}{}, nil, typeMismatchWhenDeclErr(&IntSemantTy{}, sTy, v.size.ExpPos())
+		}
+
+		_, iTy, err := s.transExp(v.init)
+		if err != nil {
+			return struct{}{}, nil, err
+		}
+
+		if !isSameType(iTy, aty.baseTy) {
+			return struct{}{}, nil, typeMismatchWhenDeclErr(aty.baseTy, iTy, v.init.ExpPos())
+		}
+
+		return struct{}{}, &ArrSemantTy{
+			baseTy: aty.baseTy,
+			u:      rand.Int63(),
+		}, nil
 	case *SequenceExp:
 		return s.transExp(v.seq[len(v.seq)-1])
 
@@ -254,6 +293,29 @@ func (s *Semant) transTy(ty Ty) (SemantTy, error) {
 			baseTy:  baseTy,
 			nameSym: v.ty,
 			name:    s.strings.Get(v.ty),
+		}, nil
+	case *ArrayTy:
+		baseTy, err := s.tenv.Look(v.ty)
+		if err != nil {
+			if err == errSTNotFound {
+				return nil, baseTypeNotFoundErr(s.strings.Get(v.ty), v.TyPos())
+			}
+
+			return nil, err
+		}
+
+		return &ArrSemantTy{
+			baseTy: baseTy,
+			u:      rand.Int63(),
+		}, nil
+	case *RecordTy:
+		if v.HasDuplicateField() {
+			return nil, duplicateRecordDefinition(v.TyPos())
+		}
+
+		return &RecordSemantTy{
+			symbols: nil,
+			ty:      nil,
 		}, nil
 	}
 

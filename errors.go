@@ -31,6 +31,10 @@ func typeMismatchWhenDeclErr(expected, got SemantTy, pos Pos) error {
 	return fmt.Errorf("expected type %s, but expression has type %s at %s", expected.TypeName(), got.TypeName(), pos.String())
 }
 
+func duplicateRecordDefinition(pos Pos) error {
+	return fmt.Errorf("duplicate record definition %s", pos.String())
+}
+
 func baseTypeNotFoundErr(base string, pos Pos) error {
 	return fmt.Errorf("base type not found %s at %s", base, pos.String())
 }

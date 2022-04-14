@@ -43,6 +43,7 @@ func (t *StringSemantTy) TypeName() string {
 
 type ArrSemantTy struct {
 	baseTy SemantTy
+	u      int64
 }
 
 func (t *ArrSemantTy) TypeName() string {
@@ -70,7 +71,7 @@ func isSameType(ty1, ty2 SemantTy) bool {
 	case *ArrSemantTy:
 		switch v2 := ty2.(type) {
 		case *ArrSemantTy:
-			return isSameType(v1.baseTy, v2.baseTy)
+			return v2.u == v1.u
 		default:
 			return false
 		}
@@ -106,7 +107,7 @@ func isString(ty SemantTy) bool {
 
 func isRecord(ty SemantTy) bool {
 	switch ty.(type) {
-	case *StringSemantTy:
+	case *RecordSemantTy:
 		return true
 	default:
 		return false

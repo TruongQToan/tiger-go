@@ -746,7 +746,6 @@ func (p *Parser) funcDecl() (*FuncDecl, error) {
 //
 func (p *Parser) arrayTy() (Ty, error) {
 	pos := p.peekToken().pos
-
 	tok, err := p.peekNext()
 	if err != nil {
 		return nil, err
@@ -765,9 +764,8 @@ func (p *Parser) arrayTy() (Ty, error) {
 		return nil, unexpectedTokErr(tok.pos)
 	}
 
-	sym := p.strings.Symbol(tok.value.(string))
 	return &ArrayTy{
-		ty:  sym,
+		ty:  p.strings.Symbol(tok.value.(string)),
 		pos: pos,
 	}, nil
 }
@@ -796,8 +794,8 @@ func (p *Parser) recTy() (Ty, error) {
 	}
 
 	return &RecordTy{
-		ty:  fields,
-		pos: pos,
+		fields: fields,
+		pos:    pos,
 	}, nil
 }
 
