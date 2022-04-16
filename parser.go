@@ -1,28 +1,16 @@
 package main
 
-import (
-	"fmt"
-)
-
-type ErrUnexpectedTok struct {
-	pos *Pos
-}
-
-func (err ErrUnexpectedTok) Error() string {
-	return fmt.Sprintf("unexpected token %+v", err.pos)
-}
-
 type Parser struct {
 	lexer     *Lexer
 	lookahead *Token
-	symbols   *ST
+	strings   *Strings
 }
 
-func NewParser(lexer *Lexer, symbols *ST) *Parser {
+func NewParser(lexer *Lexer, strs *Strings) *Parser {
 	return &Parser{
 		lexer:     lexer,
 		lookahead: nil,
-		symbols:   symbols,
+		strings:   strs,
 	}
 }
 
@@ -31,8 +19,8 @@ func (p *Parser) peekNext() (*Token, error) {
 		return nil, err
 	}
 
-	if p.lookahead.IsEor() {
-		return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
 
 	return p.peekToken(), nil
@@ -58,8 +46,12 @@ func (p *Parser) breakExp() (Exp, error) {
 		return nil, err
 	}
 
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
+	}
+
 	return &BreakExp{
-		pos: *pos,
+		pos: pos,
 	}, nil
 }
 
@@ -70,13 +62,13 @@ func (p *Parser) forExp() (Exp, error) {
 		return nil, err
 	}
 
-	if p.lookahead.IsEor() {
-		return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
 
 	tok := p.peekToken()
 	if tok.tok != "ident" {
-		return nil, &ErrUnexpectedTok{pos: tok.pos}
+		return nil, unexpectedTokErr(tok.pos)
 	}
 
 	varName, ok := tok.value.(string)
@@ -84,10 +76,10 @@ func (p *Parser) forExp() (Exp, error) {
 		panic("type of identity must be a string")
 	}
 
-	sym := p.symbols.Symbol(varName)
-	itVar := VarExp{
-		sym: sym,
-		pos: *tok.pos,
+	sym := p.strings.Symbol(varName)
+	itVar := &SimpleVar{
+		symbol: sym,
+		pos:    tok.pos,
 	}
 
 	tok, err := p.peekNext()
@@ -96,15 +88,15 @@ func (p *Parser) forExp() (Exp, error) {
 	}
 
 	if tok.tok != ":=" {
-		return nil, fmt.Errorf("unexpected token %+v", tok.pos)
+		return nil, unexpectedTokErr(tok.pos)
 	}
 
 	if err := p.nextToken(); err != nil {
 		return nil, err
 	}
 
-	if p.lookahead.IsEor() {
-		return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
 
 	start, err := p.Exp()
@@ -114,15 +106,15 @@ func (p *Parser) forExp() (Exp, error) {
 
 	tok = p.peekToken()
 	if tok.tok != "to" {
-		return nil, fmt.Errorf("unexpected token %+v", tok.pos)
+		return nil, unexpectedTokErr(tok.pos)
 	}
 
 	if err := p.nextToken(); err != nil {
 		return nil, err
 	}
 
-	if p.lookahead.IsEor() {
-		return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
 
 	end, err := p.Exp()
@@ -132,15 +124,15 @@ func (p *Parser) forExp() (Exp, error) {
 
 	tok = p.peekToken()
 	if tok.tok != "do" {
-		return nil, fmt.Errorf("unexpected token %+v", tok.pos)
+		return nil, unexpectedTokErr(tok.pos)
 	}
 
 	if err := p.nextToken(); err != nil {
 		return nil, err
 	}
 
-	if p.lookahead.IsEor() {
-		return nil, fmt.Errorf("unexpected end of file %+v", tok.pos)
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
 
 	body, err := p.Exp()
@@ -148,7 +140,7 @@ func (p *Parser) forExp() (Exp, error) {
 		return nil, err
 	}
 
-	endSymbol := p.symbols.Symbol(varName + "_end")
+	endSymbol := p.strings.Symbol(varName + "_end")
 	declarations := []Declaration{
 		&VarDecl{
 			name: sym,
@@ -162,10 +154,10 @@ func (p *Parser) forExp() (Exp, error) {
 
 	whileBody := IfExp{
 		predicate: &OperExp{
-			left: &itVar,
+			left: &VarExp{itVar},
 			op:   Le,
 			right: &VarExp{
-				sym: endSymbol,
+				&SimpleVar{symbol: endSymbol},
 			},
 		},
 		then: &WhileExp{
@@ -177,17 +169,17 @@ func (p *Parser) forExp() (Exp, error) {
 					body,
 					&IfExp{
 						predicate: &OperExp{
-							left:  &itVar,
+							left:  &VarExp{itVar},
 							op:    Lt,
-							right: &VarExp{sym: endSymbol},
+							right: &VarExp{&SimpleVar{symbol: endSymbol}},
 						},
 						then: &AssignExp{
 							exp: &OperExp{
-								left:  &itVar,
+								left:  &VarExp{itVar},
 								op:    Plus,
 								right: &IntExp{val: 1},
 							},
-							variable: &itVar,
+							variable: itVar,
 						},
 						els: &BreakExp{},
 					},
@@ -200,7 +192,7 @@ func (p *Parser) forExp() (Exp, error) {
 	return &LetExp{
 		body:  &whileBody,
 		decls: declarations,
-		pos:   *pos,
+		pos:   pos,
 	}, nil
 }
 
@@ -210,8 +202,8 @@ func (p *Parser) ifExp() (Exp, error) {
 		return nil, err
 	}
 
-	if p.lookahead.IsEor() {
-		return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
 
 	test, err := p.Exp()
@@ -221,15 +213,15 @@ func (p *Parser) ifExp() (Exp, error) {
 
 	tok := p.peekToken()
 	if tok.tok != "then" {
-		return nil, fmt.Errorf("unexpected token %+v", tok.pos)
+		return nil, unexpectedTokErr(tok.pos)
 	}
 
 	if err := p.nextToken(); err != nil {
 		return nil, err
 	}
 
-	if p.lookahead.IsEor() {
-		return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
 
 	then, err := p.Exp()
@@ -244,8 +236,8 @@ func (p *Parser) ifExp() (Exp, error) {
 			return nil, err
 		}
 
-		if p.lookahead.IsEor() {
-			return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+		if p.lookahead.IsEof() {
+			return nil, unexpectedEofErr(p.lookahead.pos)
 		}
 
 		elseExp, err = p.Exp()
@@ -258,7 +250,7 @@ func (p *Parser) ifExp() (Exp, error) {
 		predicate: test,
 		then:      then,
 		els:       elseExp,
-		pos:       *pos,
+		pos:       pos,
 	}, nil
 }
 
@@ -278,7 +270,7 @@ func (p *Parser) funcArgs() ([]Exp, error) {
 		args = append(args, arg)
 		tok = p.peekToken()
 		if tok.tok != "," && tok.tok != ")" {
-			return nil, fmt.Errorf("unexpected token %+v", tok.pos)
+			return nil, unexpectedTokErr(tok.pos)
 		}
 
 		if tok.tok == "," {
@@ -286,8 +278,8 @@ func (p *Parser) funcArgs() ([]Exp, error) {
 				return nil, err
 			}
 
-			if p.lookahead.IsEor() {
-				return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+			if p.lookahead.IsEof() {
+				return nil, unexpectedEofErr(p.lookahead.pos)
 			}
 		}
 	}
@@ -298,7 +290,7 @@ func (p *Parser) funcArgs() ([]Exp, error) {
 func (p *Parser) oneField() (*RecordField, error) {
 	tok := p.peekToken()
 	name := tok.value.(string)
-	sym := p.symbols.Symbol(name)
+	sym := p.strings.Symbol(name)
 	pos := tok.pos
 
 	tok, err := p.peekNext()
@@ -307,15 +299,15 @@ func (p *Parser) oneField() (*RecordField, error) {
 	}
 
 	if tok.tok != "=" {
-		return nil, fmt.Errorf("unexpected token %+v", tok.pos)
+		return nil, unexpectedTokErr(tok.pos)
 	}
 
 	if err := p.nextToken(); err != nil {
 		return nil, err
 	}
 
-	if p.lookahead.IsEor() {
-		return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
 
 	exp, err := p.Exp()
@@ -326,17 +318,17 @@ func (p *Parser) oneField() (*RecordField, error) {
 	return &RecordField{
 		expr:  exp,
 		ident: sym,
-		pos:   *pos,
+		pos:   pos,
 	}, nil
 }
 
-func (p *Parser) createRecord(ty Symbol, pos *Pos) (Exp, error) {
+func (p *Parser) createRecord(ty Symbol, pos Pos) (Exp, error) {
 	if err := p.nextToken(); err != nil {
 		return nil, err
 	}
 
-	if p.lookahead.IsEor() {
-		return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
 
 	field, err := p.oneField()
@@ -353,13 +345,13 @@ func (p *Parser) createRecord(ty Symbol, pos *Pos) (Exp, error) {
 					return nil, err
 				}
 
-				if p.lookahead.IsEor() {
-					return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+				if p.lookahead.IsEof() {
+					return nil, unexpectedEofErr(p.lookahead.pos)
 				}
 
 				break
 			} else {
-				return nil, ErrUnexpectedTok{tok.pos}
+				return nil, unexpectedTokErr(tok.pos)
 			}
 		}
 
@@ -367,8 +359,8 @@ func (p *Parser) createRecord(ty Symbol, pos *Pos) (Exp, error) {
 			return nil, err
 		}
 
-		if p.lookahead.IsEor() {
-			return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+		if p.lookahead.IsEof() {
+			return nil, unexpectedEofErr(p.lookahead.pos)
 		}
 
 		field, err := p.oneField()
@@ -381,29 +373,38 @@ func (p *Parser) createRecord(ty Symbol, pos *Pos) (Exp, error) {
 
 	return &RecordExp{
 		fields: fields,
-		typ:    ty,
-		pos:    *pos,
+		ty:     ty,
+		pos:    pos,
 	}, err
 }
 
 func (p *Parser) funcOrIdent() (Exp, error) {
 	tok := p.peekToken()
+	oriPos := tok.pos
 	name := tok.value.(string)
-	sym := p.symbols.Symbol(name)
 
-	tok, err := p.peekNext()
-	if err != nil {
+	sym := p.strings.Symbol(name)
+
+	if err := p.nextToken(); err != nil {
 		return nil, err
 	}
 
+	if p.lookahead.IsEof() {
+		return &VarExp{v: &SimpleVar{
+			symbol: sym,
+			pos:    tok.pos,
+		}}, nil
+	}
+
+	tok = p.peekToken()
 	switch tok.tok {
 	case "(":
 		if err := p.nextToken(); err != nil {
 			return nil, err
 		}
 
-		if p.lookahead.IsEor() {
-			return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+		if p.lookahead.IsEof() {
+			return nil, unexpectedEofErr(p.lookahead.pos)
 		}
 
 		args, err := p.funcArgs()
@@ -415,36 +416,27 @@ func (p *Parser) funcOrIdent() (Exp, error) {
 			if err := p.nextToken(); err != nil {
 				return nil, err
 			}
-
-			if p.lookahead.IsEor() {
-				return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
-			}
 		}
 
 		return &CallExp{
 			function: sym,
 			args:     args,
-			pos:      *tok.pos,
+			pos:      oriPos,
 		}, nil
 	case "{":
-		return p.createRecord(sym, tok.pos)
+		return p.createRecord(sym, oriPos)
 	default:
-		varExp := &VarExp{
-			sym: sym,
-			pos: *tok.pos,
-		}
-
-		return p.lvalueOrAssign(varExp)
+		return p.lvalueOrAssign(&SimpleVar{symbol: sym, pos: oriPos})
 	}
 }
 
-func (p *Parser) subscript(firstExp Exp) (Exp, error) {
+func (p *Parser) lvalueSubscript(v Var) (Var, error) {
 	if err := p.nextToken(); err != nil {
 		return nil, err
 	}
 
-	if p.lookahead.IsEor() {
-		return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
 
 	exp, err := p.Exp()
@@ -454,66 +446,63 @@ func (p *Parser) subscript(firstExp Exp) (Exp, error) {
 
 	tok := p.peekToken()
 	if tok.tok != "]" {
-		return nil, ErrUnexpectedTok{pos: tok.pos}
+		return nil, unexpectedTokErr(tok.pos)
 	}
 
 	if err := p.nextToken(); err != nil {
 		return nil, err
 	}
 
-	if p.lookahead.IsEor() {
-		return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
-	}
-
-	subscriptExp := SubscriptExp{
-		subscript: exp,
-		firstExp:  firstExp,
-		pos:       exp.ExpPos(),
-	}
-
-	return p.lvalue(&subscriptExp)
+	return &SubscriptionVar{
+		variable: v,
+		exp:      exp,
+		pos:      exp.ExpPos(),
+	}, nil
 }
 
-func (p *Parser) fieldExp(exp Exp) (Exp, error) {
+func (p *Parser) lvalueField(v Var) (Var, error) {
 	if err := p.nextToken(); err != nil {
 		return nil, err
 	}
 
-	if p.lookahead.IsEor() {
-		return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
 
 	tok := p.peekToken()
 	if tok.tok != "ident" {
-		return nil, ErrUnexpectedTok{tok.pos}
+		return nil, unexpectedTokErr(tok.pos)
 	}
 
-	fieldName := p.symbols.Symbol(tok.value.(string))
-	return &FieldExp{
-		firstExp:  exp,
-		fieldName: fieldName,
-		pos:       *tok.pos,
-	}, p.nextToken()
-}
-
-func (p *Parser) lvalue(exp Exp) (Exp, error) {
-	switch p.peekToken().tok {
-	case "[":
-		return p.subscript(exp)
-	case ".":
-		return p.fieldExp(exp)
-	default:
-		return exp, nil
-	}
-}
-
-func (p *Parser) array(exp *VarExp, size Exp) (Exp, error) {
 	if err := p.nextToken(); err != nil {
 		return nil, err
 	}
 
-	if p.lookahead.IsEor() {
-		return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+	return &FieldVar{
+		variable: v,
+		field:    p.strings.Symbol(tok.value.(string)),
+		pos:      v.VarPos(),
+	}, nil
+}
+
+func (p *Parser) lvalue(v Var) (Var, error) {
+	switch p.peekToken().tok {
+	case "[":
+		return p.lvalueSubscript(v)
+	case ".":
+		return p.lvalueField(v)
+	default:
+		return v, nil
+	}
+}
+
+func (p *Parser) array(t Symbol, size Exp, pos Pos) (Exp, error) {
+	if err := p.nextToken(); err != nil {
+		return nil, err
+	}
+
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
 
 	init, err := p.Exp()
@@ -524,13 +513,13 @@ func (p *Parser) array(exp *VarExp, size Exp) (Exp, error) {
 	return &ArrExp{
 		init: init,
 		size: size,
-		typ:  exp.sym,
-		pos:  exp.pos,
+		typ:  t,
+		pos:  pos,
 	}, nil
 }
 
-func (p *Parser) lvalueOrAssign(exp Exp) (Exp, error) {
-	varExp, err := p.lvalue(exp)
+func (p *Parser) lvalueOrAssign(v Var) (Exp, error) {
+	v1, err := p.lvalue(v)
 	if err != nil {
 		return nil, err
 	}
@@ -538,24 +527,24 @@ func (p *Parser) lvalueOrAssign(exp Exp) (Exp, error) {
 	tok := p.peekToken()
 	switch tok.tok {
 	case "of":
-		if exp, ok := varExp.(*SubscriptExp); ok {
-			if firstExp, ok := exp.firstExp.(*VarExp); ok {
-				return p.array(firstExp, exp.subscript)
-			}
-
-			pos := exp.ExpPos()
-			return nil, ErrUnexpectedTok{&pos}
+		v2, ok := v1.(*SubscriptionVar)
+		if !ok {
+			return nil, unexpectedTokErr(v2.pos)
 		}
 
-		pos := varExp.ExpPos()
-		return nil, ErrUnexpectedTok{&pos}
+		v3, ok := v2.variable.(*SimpleVar)
+		if !ok {
+			return nil, unexpectedTokErr(v3.pos)
+		}
+
+		return p.array(v3.symbol, v2.exp, v.VarPos())
 	case ":=":
 		if err := p.nextToken(); err != nil {
 			return nil, err
 		}
 
-		if p.lookahead.IsEor() {
-			return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+		if p.lookahead.IsEof() {
+			return nil, unexpectedEofErr(p.lookahead.pos)
 		}
 
 		exp, err := p.Exp()
@@ -565,10 +554,10 @@ func (p *Parser) lvalueOrAssign(exp Exp) (Exp, error) {
 
 		return &AssignExp{
 			exp:      exp,
-			variable: varExp,
+			variable: v1,
 		}, nil
 	default:
-		return varExp, nil
+		return &VarExp{v: v1}, nil
 	}
 }
 
@@ -580,44 +569,44 @@ func (p *Parser) intConst() (Exp, error) {
 
 	return &IntExp{
 		val: tok.value.(int64),
-		pos: *tok.pos,
+		pos: tok.pos,
 	}, nil
 }
 
-func (p *Parser) optionalType() (Symbol, error) {
+func (p *Parser) optionalType() (Symbol, *Pos, error) {
 	tok := p.peekToken()
 	if tok.tok != ":" {
-		return 0, nil
+		return 0, nil, nil
 	}
 
 	tok, err := p.peekNext()
 	if err != nil {
-		return 0, err
+		return 0, nil, err
 	}
 
 	if tok.tok != "ident" {
-		return 0, fmt.Errorf("unexpected token %+v", tok.pos)
+		return 0, nil, unexpectedTokErr(tok.pos)
 	}
 
-	return p.symbols.Symbol(tok.value.(string)), p.nextToken()
+	return p.strings.Symbol(tok.value.(string)), &tok.pos, p.nextToken()
 }
 
 func (p *Parser) fieldDecl() (*Field, error) {
 	tok := p.peekToken()
 	if tok.tok != "ident" {
-		return nil, fmt.Errorf("unexpected token %+v", tok.pos)
+		return nil, unexpectedTokErr(tok.pos)
 	}
 
 	pos := tok.pos
 
-	varSym := p.symbols.Symbol(tok.value.(string))
+	varSym := p.strings.Symbol(tok.value.(string))
 	tok, err := p.peekNext()
 	if err != nil {
 		return nil, err
 	}
 
 	if tok.tok != ":" {
-		return nil, fmt.Errorf("unexpected token %+v", tok.pos)
+		return nil, unexpectedTokErr(tok.pos)
 	}
 
 	tok, err = p.peekNext()
@@ -626,15 +615,15 @@ func (p *Parser) fieldDecl() (*Field, error) {
 	}
 
 	if tok.tok != "ident" {
-		return nil, fmt.Errorf("unexpected token %+v", tok.pos)
+		return nil, unexpectedTokErr(tok.pos)
 	}
 
-	typSym := p.symbols.Symbol(tok.value.(string))
+	typSym := p.strings.Symbol(tok.value.(string))
 	return &Field{
 		name:   varSym,
 		escape: false,
 		typ:    typSym,
-		pos:    *pos,
+		pos:    pos,
 	}, p.nextToken()
 }
 
@@ -651,8 +640,8 @@ func (p *Parser) fields(endTok string) ([]*Field, error) {
 				return nil, err
 			}
 
-			if p.lookahead.IsEor() {
-				return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+			if p.lookahead.IsEof() {
+				return nil, unexpectedEofErr(p.lookahead.pos)
 			}
 			continue
 		}
@@ -678,10 +667,10 @@ func (p *Parser) funcDecl() (*FuncDecl, error) {
 	}
 
 	if ident.tok != "ident" {
-		return nil, fmt.Errorf("unexpected token %+v", ident.pos)
+		return nil, unexpectedTokErr(ident.pos)
 	}
 
-	functionNameSym := p.symbols.Symbol(ident.value.(string))
+	functionNameSym := p.strings.Symbol(ident.value.(string))
 
 	openCur, err := p.peekNext()
 	if err != nil {
@@ -689,15 +678,15 @@ func (p *Parser) funcDecl() (*FuncDecl, error) {
 	}
 
 	if openCur.tok != "(" {
-		return nil, fmt.Errorf("unexpected token %+v", ident.pos)
+		return nil, unexpectedTokErr(openCur.pos)
 	}
 
 	if err := p.nextToken(); err != nil {
 		return nil, err
 	}
 
-	if p.lookahead.IsEor() {
-		return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
 
 	params, err := p.fields(")")
@@ -709,37 +698,40 @@ func (p *Parser) funcDecl() (*FuncDecl, error) {
 		return nil, err
 	}
 
-	if p.lookahead.IsEor() {
-		return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
-	ty, err := p.optionalType()
+
+	ty, pos, err := p.optionalType()
 	if err != nil {
 		return nil, err
 	}
 
 	tok = p.peekToken()
 	if tok.tok != "=" {
-		return nil, fmt.Errorf("unexpected token %+v", tok.pos)
+		return nil, unexpectedTokErr(tok.pos)
 	}
 
 	if err := p.nextToken(); err != nil {
 		return nil, err
 	}
 
-	if p.lookahead.IsEor() {
-		return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
+
 	body, err := p.Exp()
 	if err != nil {
 		return nil, err
 	}
 
 	return &FuncDecl{
-		name:     functionNameSym,
-		params:   params,
-		resultTy: ty,
-		body:     body,
-		pos:      *funcPos,
+		name:        functionNameSym,
+		params:      params,
+		resultTy:    ty,
+		resultTyPos: *pos,
+		body:        body,
+		pos:         funcPos,
 	}, nil
 }
 
@@ -763,14 +755,13 @@ func (p *Parser) funcDecl() (*FuncDecl, error) {
 //
 func (p *Parser) arrayTy() (Ty, error) {
 	pos := p.peekToken().pos
-
 	tok, err := p.peekNext()
 	if err != nil {
 		return nil, err
 	}
 
 	if tok.tok != "of" {
-		return nil, fmt.Errorf("unexpected token %+v", tok.pos)
+		return nil, unexpectedTokErr(tok.pos)
 	}
 
 	tok, err = p.peekNext()
@@ -779,24 +770,23 @@ func (p *Parser) arrayTy() (Ty, error) {
 	}
 
 	if tok.tok != "ident" {
-		return nil, fmt.Errorf("unexpected token %+v", tok.pos)
+		return nil, unexpectedTokErr(tok.pos)
 	}
 
-	sym := p.symbols.Symbol(tok.value.(string))
 	return &ArrayTy{
-		ty:  sym,
-		pos: *pos,
+		ty:  p.strings.Symbol(tok.value.(string)),
+		pos: pos,
 	}, nil
 }
 
-func (p *Parser) recTy() (Ty, error) {
+func (p *Parser) recordTy() (Ty, error) {
 	pos := p.peekToken().pos
 	if err := p.nextToken(); err != nil {
 		return nil, err
 	}
 
-	if p.lookahead.IsEor() {
-		return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
 
 	fields, err := p.fields("}")
@@ -804,26 +794,19 @@ func (p *Parser) recTy() (Ty, error) {
 		return nil, err
 	}
 
-	if err := p.nextToken(); err != nil {
-		return nil, err
-	}
-
-	if p.lookahead.IsEor() {
-		return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
-	}
 	return &RecordTy{
-		ty:  fields,
-		pos: *pos,
+		fields: fields,
+		pos:    pos,
 	}, nil
 }
 
 func (p *Parser) nameTy() (Ty, error) {
 	tyName := p.peekToken().value.(string)
 	pos := p.peekToken().pos
-	tySym := p.symbols.Symbol(tyName)
+	tySym := p.strings.Symbol(tyName)
 	return &NameTy{
 		ty:  tySym,
-		pos: *pos,
+		pos: pos,
 	}, nil
 }
 
@@ -833,15 +816,16 @@ func (p *Parser) tyDecl() (Declaration, error) {
 		return nil, err
 	}
 
-	if p.lookahead.IsEor() {
-		return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
-	}
-	tok := p.peekToken()
-	if tok.tok != "ident" {
-		return nil, fmt.Errorf("unexpected token %+v", tok.pos)
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
 
-	tyName := p.symbols.Symbol(tok.value.(string))
+	tok := p.peekToken()
+	if tok.tok != "ident" {
+		return nil, unexpectedTokErr(tok.pos)
+	}
+
+	tyName := p.strings.Symbol(tok.value.(string))
 
 	tok, err := p.peekNext()
 	if err != nil {
@@ -849,7 +833,7 @@ func (p *Parser) tyDecl() (Declaration, error) {
 	}
 
 	if tok.tok != "=" {
-		return nil, fmt.Errorf("unexpected token %+v", tok.pos)
+		return nil, unexpectedTokErr(tok.pos)
 	}
 
 	tok, err = p.peekNext()
@@ -857,25 +841,31 @@ func (p *Parser) tyDecl() (Declaration, error) {
 		return nil, err
 	}
 
-	var (
-		ty Ty
-	)
+	var ty Ty
 
 	switch tok.tok {
 	case "array":
 		ty, err = p.arrayTy()
 	case "{":
-		ty, err = p.recTy()
+		ty, err = p.recordTy()
 	case "ident":
 		ty, err = p.nameTy()
 	default:
-		return nil, fmt.Errorf("unexpected token %+v", tok.pos)
+		return nil, unexpectedTokErr(tok.pos)
+	}
+
+	if err := p.nextToken(); err != nil {
+		return nil, err
+	}
+
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
 
 	return &TypeDecl{
 		tyName: tyName,
-		typ:    ty,
-		pos:    *pos,
+		ty:     ty,
+		pos:    pos,
 	}, nil
 }
 
@@ -887,34 +877,36 @@ func (p *Parser) varDecl() (Declaration, error) {
 	}
 
 	if tok.tok != "ident" {
-		return nil, &ErrUnexpectedTok{tok.pos}
+		return nil, unexpectedTokErr(tok.pos)
 	}
 
 	if err := p.nextToken(); err != nil {
 		return nil, err
 	}
 
-	if p.lookahead.IsEor() {
-		return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
-	varName := p.symbols.Symbol(tok.value.(string))
-	ty, err := p.optionalType()
+
+	varName := p.strings.Symbol(tok.value.(string))
+	ty, _, err := p.optionalType()
 	if err != nil {
 		return nil, err
 	}
 
 	tok = p.peekToken()
 	if tok.tok != ":=" {
-		return nil, ErrUnexpectedTok{tok.pos}
+		return nil, unexpectedTokErr(tok.pos)
 	}
 
 	if err := p.nextToken(); err != nil {
 		return nil, err
 	}
 
-	if p.lookahead.IsEor() {
-		return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
+
 	init, err := p.Exp()
 	if err != nil {
 		return nil, err
@@ -925,7 +917,7 @@ func (p *Parser) varDecl() (Declaration, error) {
 		escape: false,
 		typ:    ty,
 		init:   init,
-		pos:    *pos,
+		pos:    pos,
 	}, nil
 }
 
@@ -939,7 +931,7 @@ func (p *Parser) declarations() (Declaration, error) {
 	case "var":
 		return p.varDecl()
 	default:
-		return nil, &ErrUnexpectedTok{tok.pos}
+		return nil, unexpectedTokErr(tok.pos)
 	}
 }
 
@@ -949,8 +941,8 @@ func (p *Parser) letExp() (Exp, error) {
 		return nil, err
 	}
 
-	if p.lookahead.IsEor() {
-		return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
 	decl, err := p.declarations()
 	if err != nil {
@@ -977,17 +969,19 @@ LOOP:
 		}
 	}
 
-	if p.peekToken().tok != "in" {
-		return nil, &ErrUnexpectedTok{pos: p.peekToken().pos}
+	peekToken := p.peekToken()
+	if peekToken.tok != "in" {
+		return nil, unexpectedTokErr(peekToken.pos)
 	}
 
 	if err := p.nextToken(); err != nil {
 		return nil, err
 	}
 
-	if p.lookahead.IsEor() {
-		return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
+
 	exp, err := p.Exp()
 	if err != nil {
 		return nil, err
@@ -996,7 +990,7 @@ LOOP:
 	firstExpPos := exp.ExpPos()
 
 	exps := []Exp{exp}
-	for true {
+	for {
 		if p.peekToken().tok != ";" {
 			break
 		}
@@ -1005,8 +999,8 @@ LOOP:
 			return nil, err
 		}
 
-		if p.lookahead.IsEor() {
-			return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+		if p.lookahead.IsEof() {
+			return nil, unexpectedEofErr(p.lookahead.pos)
 		}
 		exp, err := p.Exp()
 		if err != nil {
@@ -1033,21 +1027,19 @@ LOOP:
 		}
 	}
 
-	if p.peekToken().tok != "end" {
-		return nil, ErrUnexpectedTok{pos: p.peekToken().pos}
+	peekToken = p.peekToken()
+	if peekToken.tok != "end" {
+		return nil, unexpectedTokErr(peekToken.pos)
 	}
 
 	if err := p.nextToken(); err != nil {
 		return nil, err
 	}
 
-	if p.lookahead.IsEor() {
-		return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
-	}
 	return &LetExp{
 		body:  seqExp,
 		decls: decls,
-		pos:   *pos,
+		pos:   pos,
 	}, nil
 }
 
@@ -1057,7 +1049,7 @@ func (p *Parser) nilExp() (Exp, error) {
 		return nil, err
 	}
 
-	return &NilExp{*pos}, nil
+	return &NilExp{pos}, nil
 }
 
 func (p *Parser) seqExp() (Exp, error) {
@@ -1066,9 +1058,18 @@ func (p *Parser) seqExp() (Exp, error) {
 		return nil, err
 	}
 
-	if p.lookahead.IsEor() {
-		return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
+
+	if p.peekToken().tok == ")" {
+		if err := p.nextToken(); err != nil {
+			return nil, err
+		}
+
+		return &NilExp{pos: p.peekToken().pos}, nil
+	}
+
 	exp, err := p.Exp()
 	if err != nil {
 		return nil, err
@@ -1084,8 +1085,8 @@ func (p *Parser) seqExp() (Exp, error) {
 			return nil, err
 		}
 
-		if p.lookahead.IsEor() {
-			return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+		if p.lookahead.IsEof() {
+			return nil, unexpectedEofErr(p.lookahead.pos)
 		}
 		exp, err := p.Exp()
 		if err != nil {
@@ -1095,8 +1096,9 @@ func (p *Parser) seqExp() (Exp, error) {
 		seqExp = append(seqExp, exp)
 	}
 
-	if p.peekToken().tok != ")" {
-		return nil, ErrUnexpectedTok{p.peekToken().pos}
+	peekToken := p.peekToken()
+	if peekToken.tok != ")" {
+		return nil, unexpectedTokErr(peekToken.pos)
 	}
 
 	if err := p.nextToken(); err != nil {
@@ -1105,7 +1107,7 @@ func (p *Parser) seqExp() (Exp, error) {
 
 	return &SequenceExp{
 		seq: seqExp,
-		pos: *pos,
+		pos: pos,
 	}, nil
 }
 
@@ -1117,7 +1119,7 @@ func (p *Parser) strExp() (Exp, error) {
 
 	return &StrExp{
 		str: tok.value.(string),
-		pos: *tok.pos,
+		pos: tok.pos,
 	}, nil
 }
 
@@ -1127,8 +1129,8 @@ func (p *Parser) whileExp() (Exp, error) {
 		return nil, err
 	}
 
-	if p.lookahead.IsEor() {
-		return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
 	test, err := p.Exp()
 	if err != nil {
@@ -1136,15 +1138,15 @@ func (p *Parser) whileExp() (Exp, error) {
 	}
 
 	if p.peekToken().tok != "do" {
-		return nil, ErrUnexpectedTok{p.peekToken().pos}
+		return nil, unexpectedTokErr(p.peekToken().pos)
 	}
 
 	if err := p.nextToken(); err != nil {
 		return nil, err
 	}
 
-	if p.lookahead.IsEor() {
-		return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
 	body, err := p.Exp()
 	if err != nil {
@@ -1154,7 +1156,7 @@ func (p *Parser) whileExp() (Exp, error) {
 	return &WhileExp{
 		pred: test,
 		body: body,
-		pos:  *pos,
+		pos:  pos,
 	}, nil
 }
 
@@ -1182,7 +1184,7 @@ func (p *Parser) primaryExp() (Exp, error) {
 	case "while":
 		return p.whileExp()
 	default:
-		return nil, ErrUnexpectedTok{tok.pos}
+		return nil, unexpectedTokErr(tok.pos)
 	}
 }
 
@@ -1194,9 +1196,10 @@ func (p *Parser) unaryExp() (Exp, error) {
 			return nil, err
 		}
 
-		if p.lookahead.IsEor() {
-			return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+		if p.lookahead.IsEof() {
+			return nil, unexpectedEofErr(p.lookahead.pos)
 		}
+
 		exp, err := p.unaryExp()
 		if err != nil {
 			return nil, err
@@ -1205,7 +1208,7 @@ func (p *Parser) unaryExp() (Exp, error) {
 		return &OperExp{
 			left: &IntExp{
 				val: 0,
-				pos: *pos,
+				pos: pos,
 			},
 			op:    Minus,
 			right: exp,
@@ -1231,9 +1234,10 @@ func (p *Parser) mulExp() (Exp, error) {
 			return nil, err
 		}
 
-		if p.lookahead.IsEor() {
-			return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+		if p.lookahead.IsEof() {
+			return nil, unexpectedEofErr(p.lookahead.pos)
 		}
+
 		nextExp, err := p.unaryExp()
 		if err != nil {
 			return nil, err
@@ -1274,8 +1278,8 @@ func (p *Parser) addExp() (Exp, error) {
 			return nil, err
 		}
 
-		if p.lookahead.IsEor() {
-			return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+		if p.lookahead.IsEof() {
+			return nil, unexpectedEofErr(p.lookahead.pos)
 		}
 		nextExp, err := p.mulExp()
 		if err != nil {
@@ -1315,8 +1319,8 @@ func (p *Parser) relationalExp() (Exp, error) {
 		return nil, err
 	}
 
-	if p.lookahead.IsEor() {
-		return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
 	right, err := p.addExp()
 	if err != nil {
@@ -1360,8 +1364,8 @@ func (p *Parser) andExp() (Exp, error) {
 		return nil, err
 	}
 
-	if p.lookahead.IsEor() {
-		return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
 	right, err := p.relationalExp()
 	if err != nil {
@@ -1390,9 +1394,10 @@ func (p *Parser) orExp() (Exp, error) {
 		return nil, err
 	}
 
-	if p.lookahead.IsEor() {
-		return nil, fmt.Errorf("unexpected end of file %+v", p.lookahead.pos)
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
+
 	right, err := p.andExp()
 	if err != nil {
 		return nil, err

@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-var fileName = flag.String("source", "./test_files/operator.tig", "source file to compile")
+var fileName = flag.String("source", "./test_files/record.tig", "source file to compile")
 
 func main() {
 	f, err := os.ReadFile(*fileName)
@@ -22,18 +22,18 @@ func main() {
 	lexer := NewLexer(*fileName, buf)
 
 	strs := NewStrings()
-	symbols := NewST(strs)
-	parser := NewParser(lexer, symbols)
+	parser := NewParser(lexer, strs)
 	exp, err := parser.Parse()
 	if err != nil {
 		log.Fatalf("parsing error %v", err)
 	}
 
 	strBuilder := strings.Builder{}
-	exp.String(symbols, &strBuilder, 0)
+	exp.String(strs, &strBuilder, 0)
 	fmt.Println(strBuilder.String())
 
-	semant := NewSemant(strs, nil, nil)
+	venv, tenv := InitBaseVarEnv(strs), InitBaseTypeEnv(strs)
+	semant := NewSemant(strs, venv, tenv)
 	if err := semant.TransProg(exp); err != nil {
 		log.Fatalf("semantic error %v", err)
 	}

@@ -46,11 +46,11 @@ func testFile(t *testing.T, fileName string) {
 	buf := bufio.NewReader(bytes.NewReader(f))
 	lexer := NewLexer(fileName, buf)
 
-	symbols := NewST(NewStrings())
-	parser := NewParser(lexer, symbols)
+	strs := NewStrings()
+	parser := NewParser(lexer, strs)
 	exp, err := parser.Parse()
 	require.NoError(t, err)
 	strBuilder := strings.Builder{}
-	exp.String(symbols, &strBuilder, 0)
+	exp.String(strs, &strBuilder, 0)
 	fmt.Println(strBuilder.String())
 }
