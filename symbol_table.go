@@ -27,6 +27,7 @@ func (s *Strings) Get(sym Symbol) string {
 }
 
 func (s *Strings) Symbol(str string) Symbol {
+	// TODO: is this a right way to handle or we need to create new symbol every time
 	for v, s := range s.strings {
 		if strings.EqualFold(s, str) {
 			return v
@@ -189,6 +190,6 @@ func (s *BaseST) Name(sym Symbol) string {
 
 func (s *BaseST) Replace(sym Symbol, data interface{}) {
 	if _, ok := s.table[sym]; ok {
-		s.table[sym] = append(s.table[sym][:len(s.table)-1], data)
+		s.table[sym] = append(s.table[sym][:len(s.table[sym])-1], data)
 	}
 }

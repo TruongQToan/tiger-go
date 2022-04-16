@@ -124,11 +124,12 @@ func (f *Field) String(strs *Strings, strBuilder *strings.Builder, level int) {
 }
 
 type FuncDecl struct {
-	name     Symbol
-	params   []*Field
-	resultTy Symbol
-	body     Exp
-	pos      Pos
+	name        Symbol
+	params      []*Field
+	resultTy    Symbol
+	resultTyPos Pos
+	body        Exp
+	pos         Pos
 }
 
 func (f *FuncDecl) DeclPos() Pos {
@@ -494,7 +495,7 @@ func (e *OperExp) String(strs *Strings, strBuilder *strings.Builder, level int) 
 
 type RecordExp struct {
 	fields []*RecordField
-	typ    Symbol
+	ty     Symbol
 	pos    Pos
 }
 
@@ -504,7 +505,7 @@ func (e *RecordExp) String(strs *Strings, strBuilder *strings.Builder, level int
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Type\n")
 	indent(strBuilder, level+2)
-	strBuilder.WriteString(strs.Get(e.typ) + "\n")
+	strBuilder.WriteString(strs.Get(e.ty) + "\n")
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Fields\n")
 	for _, field := range e.fields {

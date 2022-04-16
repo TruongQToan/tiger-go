@@ -15,12 +15,29 @@ func mismatchTypeErr(expected, actual SemantTy, pos Pos) error {
 	return fmt.Errorf("expected %s, but found %s at %s", expected.TypeName(), actual.TypeName(), pos.String())
 }
 
+func invalidNumberOfRecordFieldErr(pos Pos) error {
+	return fmt.Errorf("invalid number of record fields when constructing new record at %s", pos.String())
+}
+
+func fieldNotFoundErr(field string, recordTy string, pos Pos) error {
+	return fmt.Errorf("field %s not found in record %s at %s", field, recordTy, pos.String())
+}
+
 func undefinedVarErr(v string, pos Pos) error {
 	return fmt.Errorf("undefined variable %s at %s", v, pos.String())
 }
 
+// TODO: change this to "variable not found"
 func expectedVarButFoundFunErr(v string, pos Pos) error {
-	return fmt.Errorf("expected %s is a variable but found function %s", v, pos.String())
+	return fmt.Errorf("expected %s is a variable but found function at %s", v, pos.String())
+}
+
+func functionNotFoundErr(f string, pos Pos) error {
+	return fmt.Errorf("function not found %s at %s", f, pos.String())
+}
+
+func mismatchNumberOfParameters(f string, pos Pos) error {
+	return fmt.Errorf("function %s has a different number of params at %s", f, pos.String())
 }
 
 func typeNotFoundErr(ty string, pos Pos) error {

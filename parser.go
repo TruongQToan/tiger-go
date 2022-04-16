@@ -369,14 +369,16 @@ func (p *Parser) createRecord(ty Symbol, pos Pos) (Exp, error) {
 
 	return &RecordExp{
 		fields: fields,
-		typ:    ty,
+		ty:     ty,
 		pos:    pos,
 	}, err
 }
 
 func (p *Parser) funcOrIdent() (Exp, error) {
 	tok := p.peekToken()
+	oriPos := tok.pos
 	name := tok.value.(string)
+
 	sym := p.strings.Symbol(name)
 
 	if err := p.nextToken(); err != nil {
@@ -390,6 +392,7 @@ func (p *Parser) funcOrIdent() (Exp, error) {
 		}}, nil
 	}
 
+	tok = p.peekToken()
 	switch tok.tok {
 	case "(":
 		if err := p.nextToken(); err != nil {
@@ -414,12 +417,12 @@ func (p *Parser) funcOrIdent() (Exp, error) {
 		return &CallExp{
 			function: sym,
 			args:     args,
-			pos:      tok.pos,
+			pos:      oriPos,
 		}, nil
 	case "{":
-		return p.createRecord(sym, tok.pos)
+		return p.createRecord(sym, oriPos)
 	default:
-		return p.lvalueOrAssign(&SimpleVar{symbol: sym, pos: tok.pos})
+		return p.lvalueOrAssign(&SimpleVar{symbol: sym, pos: oriPos})
 	}
 }
 
@@ -566,22 +569,22 @@ func (p *Parser) intConst() (Exp, error) {
 	}, nil
 }
 
-func (p *Parser) optionalType() (Symbol, error) {
+func (p *Parser) optionalType() (Symbol, *Pos, error) {
 	tok := p.peekToken()
 	if tok.tok != ":" {
-		return 0, nil
+		return 0, nil, nil
 	}
 
 	tok, err := p.peekNext()
 	if err != nil {
-		return 0, err
+		return 0, nil, err
 	}
 
 	if tok.tok != "ident" {
-		return 0, unexpectedTokErr(tok.pos)
+		return 0, nil, unexpectedTokErr(tok.pos)
 	}
 
-	return p.strings.Symbol(tok.value.(string)), p.nextToken()
+	return p.strings.Symbol(tok.value.(string)), &tok.pos, p.nextToken()
 }
 
 func (p *Parser) fieldDecl() (*Field, error) {
@@ -694,7 +697,8 @@ func (p *Parser) funcDecl() (*FuncDecl, error) {
 	if p.lookahead.IsEof() {
 		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
-	ty, err := p.optionalType()
+
+	ty, pos, err := p.optionalType()
 	if err != nil {
 		return nil, err
 	}
@@ -718,11 +722,12 @@ func (p *Parser) funcDecl() (*FuncDecl, error) {
 	}
 
 	return &FuncDecl{
-		name:     functionNameSym,
-		params:   params,
-		resultTy: ty,
-		body:     body,
-		pos:      funcPos,
+		name:        functionNameSym,
+		params:      params,
+		resultTy:    ty,
+		resultTyPos: *pos,
+		body:        body,
+		pos:         funcPos,
 	}, nil
 }
 
@@ -770,7 +775,7 @@ func (p *Parser) arrayTy() (Ty, error) {
 	}, nil
 }
 
-func (p *Parser) recTy() (Ty, error) {
+func (p *Parser) recordTy() (Ty, error) {
 	pos := p.peekToken().pos
 	if err := p.nextToken(); err != nil {
 		return nil, err
@@ -783,14 +788,6 @@ func (p *Parser) recTy() (Ty, error) {
 	fields, err := p.fields("}")
 	if err != nil {
 		return nil, err
-	}
-
-	if err := p.nextToken(); err != nil {
-		return nil, err
-	}
-
-	if p.lookahead.IsEof() {
-		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
 
 	return &RecordTy{
@@ -846,7 +843,7 @@ func (p *Parser) tyDecl() (Declaration, error) {
 	case "array":
 		ty, err = p.arrayTy()
 	case "{":
-		ty, err = p.recTy()
+		ty, err = p.recordTy()
 	case "ident":
 		ty, err = p.nameTy()
 	default:
@@ -888,7 +885,7 @@ func (p *Parser) varDecl() (Declaration, error) {
 	}
 
 	varName := p.strings.Symbol(tok.value.(string))
-	ty, err := p.optionalType()
+	ty, _, err := p.optionalType()
 	if err != nil {
 		return nil, err
 	}
@@ -1060,6 +1057,15 @@ func (p *Parser) seqExp() (Exp, error) {
 	if p.lookahead.IsEof() {
 		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
+
+	if p.peekToken().tok == ")" {
+		if err := p.nextToken(); err != nil {
+			return nil, err
+		}
+
+		return &NilExp{pos: p.peekToken().pos}, nil
+	}
+
 	exp, err := p.Exp()
 	if err != nil {
 		return nil, err

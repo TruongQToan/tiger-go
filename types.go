@@ -10,11 +10,22 @@ type SemantTy interface {
 
 type RecordSemantTy struct {
 	symbols []Symbol
-	ty      []SemantTy
+	types   []SemantTy
+	u       int64
 }
 
 func (t *RecordSemantTy) TypeName() string {
 	return "record"
+}
+
+func (t *RecordSemantTy) HasField(field Symbol) int {
+	for i, sym := range t.symbols {
+		if sym == field {
+			return i
+		}
+	}
+
+	return -1
 }
 
 type NilSemantTy struct{}
@@ -47,7 +58,11 @@ type ArrSemantTy struct {
 }
 
 func (t *ArrSemantTy) TypeName() string {
-	return fmt.Sprintf("array of %s", t.baseTy.TypeName())
+	if t.baseTy != nil {
+		return fmt.Sprintf("array of %s", t.baseTy.TypeName())
+	}
+
+	return "array"
 }
 
 type NameSemantTy struct {
@@ -62,12 +77,26 @@ func (t *NameSemantTy) TypeName() string {
 
 func isSameType(ty1, ty2 SemantTy) bool {
 	switch v1 := ty1.(type) {
+	case *NilSemantTy:
+		// TODO: is this correct?
+		return isRecord(ty2)
+
 	case *IntSemantTy:
 		return isInt(ty2)
+
 	case *StringSemantTy:
 		return isString(ty2)
+
 	case *RecordSemantTy:
-		return isRecord(ty2)
+		switch v2 := ty2.(type) {
+		case *NilSemantTy:
+			return true
+		case *RecordSemantTy:
+			return v1.u == v2.u
+		default:
+			return false
+		}
+
 	case *ArrSemantTy:
 		switch v2 := ty2.(type) {
 		case *ArrSemantTy:
@@ -75,6 +104,7 @@ func isSameType(ty1, ty2 SemantTy) bool {
 		default:
 			return false
 		}
+
 	case *NameSemantTy:
 		switch v2 := ty2.(type) {
 		case *NameSemantTy:

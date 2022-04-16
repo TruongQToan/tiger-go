@@ -76,7 +76,7 @@ func (v *VarEntry) IsEnvEntry() {}
 
 type FunEntry struct {
 	formals []SemantTy
-	Result  SemantTy
+	result  SemantTy
 }
 
 func (v *FunEntry) IsEnvEntry() {}
@@ -93,7 +93,7 @@ func InitBaseVarEnv(strs *Strings) *VarST {
 	for _, finfo := range baseFuncs {
 		symbols.Enter(strs.Symbol(finfo.name), &FunEntry{
 			formals: finfo.args,
-			Result:  finfo.resTy,
+			result:  finfo.resTy,
 		})
 	}
 

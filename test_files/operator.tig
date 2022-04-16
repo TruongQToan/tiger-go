@@ -1,7 +1,9 @@
 let
 var N := 8
+var s := 4
 type intArray = array of int
-var diag := intArray [ N ] of 0
+var diag := intArray [ N ] of 3
+function foo(c: int): int = b
 in
-diag
+(N := if N > 5 then diag[2] else 3; s := N; foo(3))
 end
