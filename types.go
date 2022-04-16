@@ -10,7 +10,7 @@ type SemantTy interface {
 
 type RecordSemantTy struct {
 	symbols []Symbol
-	types   []SemantTy
+	types   []Symbol
 	u       int64
 }
 
@@ -92,8 +92,6 @@ func isSameType(ty1, ty2 SemantTy) bool {
 		case *NilSemantTy:
 			return true
 		case *RecordSemantTy:
-			fmt.Println("v1u", v1.u)
-			fmt.Println("v2u", v2.u)
 			return v1.u == v2.u
 		default:
 			return false

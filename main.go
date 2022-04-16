@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-var fileName = flag.String("source", "./test_files/treelist.tig", "source file to compile")
+var fileName = flag.String("source", "./test_files/record.tig", "source file to compile")
 
 func main() {
 	f, err := os.ReadFile(*fileName)

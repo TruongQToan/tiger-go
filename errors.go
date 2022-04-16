@@ -4,11 +4,16 @@ import "fmt"
 
 // Parser errors
 func unexpectedTokErr(pos Pos) error {
-	return fmt.Errorf("unexpected token %+v", pos)
+	return fmt.Errorf("unexpected token %s", pos.String())
 }
 
 func unexpectedEofErr(pos Pos) error {
-	return fmt.Errorf("unexpected end of file %+v", pos)}
+	return fmt.Errorf("unexpected end of file %s", pos.String())
+}
+
+func breakOutOfScopeErr(pos Pos) error {
+	return fmt.Errorf("break expression can only be in while loop or for loop at %s", pos.String())
+}
 
 // Semantic errors
 func mismatchTypeErr(expected, actual SemantTy, pos Pos) error {

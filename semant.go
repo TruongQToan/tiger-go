@@ -27,7 +27,7 @@ func NewSemant(strings *Strings, vent *VarST, tenv *TypeST) *Semant {
 }
 
 func (s *Semant) TransProg(exp Exp) error {
-	_, ty, err := s.transExp(exp)
+	_, ty, err := s.transExp(exp, false)
 	if err != nil {
 		return err
 	}
@@ -104,7 +104,16 @@ func (s *Semant) transVar(variable Var) (TransExp, SemantTy, error) {
 
 		for i, field := range recordTy.symbols {
 			if field == v.field {
-				aTy, err := s.actualTy(recordTy.types[i], Pos{})
+				semantTy, err := s.tenv.Look(recordTy.types[i])
+				if err != nil {
+					if err == errSTNotFound {
+						return struct{}{}, nil, typeNotFoundErr(s.strings.Get(recordTy.types[i]), Pos{})
+					}
+
+					return struct{}{}, nil, err
+				}
+
+				aTy, err := s.actualTy(semantTy, Pos{})
 				if err != nil {
 					return struct{}{}, nil, err
 				}
@@ -139,7 +148,7 @@ func (s *Semant) transVar(variable Var) (TransExp, SemantTy, error) {
 		}
 
 		// 2. Check the expr is int or not
-		_, eTy, err := s.transExp(v.exp)
+		_, eTy, err := s.transExp(v.exp, false)
 		if err != nil {
 			return struct{}{}, nil, err
 		}
@@ -156,16 +165,16 @@ func (s *Semant) transVar(variable Var) (TransExp, SemantTy, error) {
 }
 
 // transExp the output SemantTy must be a real type, not an alias type
-func (s *Semant) transExp(exp Exp) (TransExp, SemantTy, error) {
+func (s *Semant) transExp(exp Exp, canHasBreak bool) (TransExp, SemantTy, error) {
 	pos := exp.ExpPos()
 	switch v := exp.(type) {
 	case *OperExp:
-		_, leftTy, err := s.transExp(v.left)
+		_, leftTy, err := s.transExp(v.left, false)
 		if err != nil {
 			return struct{}{}, nil, err
 		}
 
-		_, rightTy, err := s.transExp(v.right)
+		_, rightTy, err := s.transExp(v.right, false)
 		if err != nil {
 			return struct{}{}, nil, err
 		}
@@ -265,7 +274,7 @@ func (s *Semant) transExp(exp Exp) (TransExp, SemantTy, error) {
 			return struct{}{}, nil, typeMismatchWhenDeclErr(&ArrSemantTy{}, ty, v.ExpPos())
 		}
 
-		_, sTy, err := s.transExp(v.size)
+		_, sTy, err := s.transExp(v.size, false)
 		if err != nil {
 			return struct{}{}, nil, err
 		}
@@ -275,7 +284,7 @@ func (s *Semant) transExp(exp Exp) (TransExp, SemantTy, error) {
 			return struct{}{}, nil, typeMismatchWhenDeclErr(&IntSemantTy{}, sTy, v.size.ExpPos())
 		}
 
-		_, iTy, err := s.transExp(v.init)
+		_, iTy, err := s.transExp(v.init, false)
 		if err != nil {
 			return struct{}{}, nil, err
 		}
@@ -290,7 +299,7 @@ func (s *Semant) transExp(exp Exp) (TransExp, SemantTy, error) {
 		}, nil
 
 	case *SequenceExp:
-		return s.transExp(v.seq[len(v.seq)-1])
+		return s.transExp(v.seq[len(v.seq)-1], false)
 
 	case *LetExp:
 		// We need to deal with recursive declarations like in this example type intlist = {first: int, rest: intlist}
@@ -341,7 +350,7 @@ func (s *Semant) transExp(exp Exp) (TransExp, SemantTy, error) {
 			}
 		}
 
-		return s.transExp(v.body)
+		return s.transExp(v.body, false)
 
 	case *AssignExp:
 		_, vTy, err := s.transVar(v.variable)
@@ -354,7 +363,7 @@ func (s *Semant) transExp(exp Exp) (TransExp, SemantTy, error) {
 			return struct{}{}, nil, err
 		}
 
-		_, eTy, err := s.transExp(v.exp)
+		_, eTy, err := s.transExp(v.exp, false)
 		if err != nil {
 			return struct{}{}, nil, err
 		}
@@ -366,7 +375,7 @@ func (s *Semant) transExp(exp Exp) (TransExp, SemantTy, error) {
 		return struct{}{}, &UnitSemantTy{}, nil
 
 	case *IfExp:
-		_, pTy, err := s.transExp(v.predicate)
+		_, pTy, err := s.transExp(v.predicate, false)
 		if err != nil {
 			return struct{}{}, nil, err
 		}
@@ -376,13 +385,13 @@ func (s *Semant) transExp(exp Exp) (TransExp, SemantTy, error) {
 			return struct{}{}, nil, mismatchTypeErr(&IntSemantTy{}, pTy, v.predicate.ExpPos())
 		}
 
-		_, tTy, err := s.transExp(v.then)
+		_, tTy, err := s.transExp(v.then, false)
 		if err != nil {
 			return struct{}{}, nil, err
 		}
 
 		if v.els != nil {
-			_, eTy, err := s.transExp(v.els)
+			_, eTy, err := s.transExp(v.els, false)
 			if err != nil {
 				return struct{}{}, nil, err
 			}
@@ -395,7 +404,7 @@ func (s *Semant) transExp(exp Exp) (TransExp, SemantTy, error) {
 		return struct{}{}, tTy, nil
 
 	case *WhileExp:
-		_, tTy, err := s.transExp(v.pred)
+		_, tTy, err := s.transExp(v.pred, false)
 		if err != nil {
 			return struct{}{}, nil, err
 		}
@@ -405,7 +414,7 @@ func (s *Semant) transExp(exp Exp) (TransExp, SemantTy, error) {
 			return struct{}{}, nil, mismatchTypeErr(&IntSemantTy{}, tTy, v.pred.ExpPos())
 		}
 
-		_, bTy, err := s.transExp(v.body)
+		_, bTy, err := s.transExp(v.body, true)
 		if err != nil {
 			return struct{}{}, nil, err
 		}
@@ -437,7 +446,7 @@ func (s *Semant) transExp(exp Exp) (TransExp, SemantTy, error) {
 		}
 
 		for i, arg := range v.args {
-			_, ty, err := s.transExp(arg)
+			_, ty, err := s.transExp(arg, false)
 			if err != nil {
 				return struct{}{}, nil, err
 			}
@@ -456,6 +465,11 @@ func (s *Semant) transExp(exp Exp) (TransExp, SemantTy, error) {
 
 	case *BreakExp:
 		// TODO: check if break statement is inside while/for
+		if !canHasBreak {
+			return struct{}{}, nil, breakOutOfScopeErr(v.pos)
+		}
+
+		return struct{}{}, &UnitSemantTy{}, nil
 
 	case *RecordExp:
 		tTy, err := s.tenv.Look(v.ty)
@@ -490,12 +504,18 @@ func (s *Semant) transExp(exp Exp) (TransExp, SemantTy, error) {
 				return struct{}{}, nil, fieldNotFoundErr(s.strings.Get(field.ident), s.strings.Get(v.ty), field.pos)
 			}
 
-			_, eTy, err := s.transExp(field.expr)
+			_, eTy, err := s.transExp(field.expr, false)
 			if err != nil {
 				return struct{}{}, nil, err
 			}
 
-			fTy, err := s.actualTy(ty.types[idx], Pos{})
+			semantTy, err := s.tenv.Look(ty.types[idx])
+			if err != nil {
+				// Should not happen
+				return struct{}{}, nil, typeNotFoundErr(s.strings.Get(ty.types[idx]), Pos{})
+			}
+
+			fTy, err := s.actualTy(semantTy, Pos{})
 			if err != nil {
 				return struct{}{}, nil, err
 			}
@@ -568,7 +588,7 @@ func (s *Semant) transDec(decl Declaration, pass int) error {
 			return nil
 		}
 
-		_, bTy, err := s.transExp(v.body)
+		_, bTy, err := s.transExp(v.body, false)
 		if err != nil {
 			return err
 		}
@@ -585,7 +605,7 @@ func (s *Semant) transDec(decl Declaration, pass int) error {
 		return nil
 
 	case *VarDecl:
-		_, initTy, err := s.transExp(v.init)
+		_, initTy, err := s.transExp(v.init, false)
 		if err != nil {
 			return err
 		}
@@ -700,24 +720,18 @@ func (s *Semant) transTypeDecl(ty Ty, pass int) (SemantTy, error) {
 			}, nil
 		}
 
-		types := make([]SemantTy, 0, len(v.fields))
+		types := make([]Symbol, 0, len(v.fields))
 		symbols := make([]Symbol, 0, len(v.fields))
-
-		recursivePos := make([]int, 0, len(v.fields))
-		for i, field := range v.fields {
-			fTy, err := s.tenv.Look(field.typ)
+		for _, field := range v.fields {
+			_, err := s.tenv.Look(field.typ)
 			if err != nil {
 				if err == errSTNotFound {
 					return nil, typeNotFoundErr(s.strings.Get(field.typ), field.pos)
 				}
 			}
 
-			if ty, ok := fTy.(*NameSemantTy); ok && ty.baseTy == nil {
-				recursivePos = append(recursivePos, i)
-			}
-
 			symbols = append(symbols, field.name)
-			types = append(types, fTy)
+			types = append(types, field.typ)
 		}
 
 		return &RecordSemantTy{

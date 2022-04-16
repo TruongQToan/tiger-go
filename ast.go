@@ -626,6 +626,7 @@ func (v *FieldVar) String(strs *Strings, strBuilder *strings.Builder, level int)
 	v.variable.String(strs, strBuilder, level+2)
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Field\n")
+	indent(strBuilder, level+2)
 	strBuilder.WriteString(fmt.Sprintf("%s\n", strs.Get(v.field)))
 }
 

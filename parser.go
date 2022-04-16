@@ -46,6 +46,10 @@ func (p *Parser) breakExp() (Exp, error) {
 		return nil, err
 	}
 
+	if p.lookahead.IsEof() {
+		return nil, unexpectedEofErr(p.lookahead.pos)
+	}
+
 	return &BreakExp{
 		pos: pos,
 	}, nil
