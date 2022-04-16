@@ -6,9 +6,10 @@ import (
 )
 
 const (
-	FirstPass  = 1
-	SecondPass = 2
-	IgnorePass = 3
+	IgnorePass = iota
+	FirstPass
+	SecondPass
+	ThirdPass
 )
 
 type Semant struct {
@@ -80,6 +81,40 @@ func (s *Semant) transVar(variable Var) (TransExp, SemantTy, error) {
 
 		return struct{}{}, sTy, nil
 
+	case *FieldVar:
+		v1, ok := v.variable.(*SimpleVar)
+		if !ok {
+			return struct{}{}, nil, unexpectedTokErr(v.pos)
+		}
+
+		entry, err := s.venv.Look(v1.symbol)
+		if err != nil {
+			return struct{}{}, nil, err
+		}
+
+		entry1, ok := entry.(*VarEntry)
+		if !ok {
+			return struct{}{}, nil, expectedVarButFoundFunErr(s.strings.Get(v1.symbol), v1.VarPos())
+		}
+
+		recordTy, ok := entry1.ty.(*RecordSemantTy)
+		if !ok {
+			return struct{}{}, nil, mismatchTypeErr(&RecordSemantTy{}, recordTy, v.pos)
+		}
+
+		for i, field := range recordTy.symbols {
+			if field == v.field {
+				aTy, err := s.actualTy(recordTy.types[i], Pos{})
+				if err != nil {
+					return struct{}{}, nil, err
+				}
+
+				return struct{}{}, aTy, nil
+			}
+		}
+
+		return struct{}{}, nil, fieldNotFoundErr(s.strings.Get(v.field), "", v.pos)
+
 	case *SubscriptionVar:
 		v1, ok := v.variable.(*SimpleVar)
 		if !ok {
@@ -117,7 +152,6 @@ func (s *Semant) transVar(variable Var) (TransExp, SemantTy, error) {
 		return struct{}{}, arrTy.baseTy, nil
 	}
 
-	// TODO: update this
 	return struct{}{}, nil, nil
 }
 
@@ -260,8 +294,8 @@ func (s *Semant) transExp(exp Exp) (TransExp, SemantTy, error) {
 
 	case *LetExp:
 		// We need to deal with recursive declarations like in this example type intlist = {first: int, rest: intlist}
-		// 1. First pass: collect all the headers of type declaration
 
+		// 1. Perform two passes to parse type declarations
 		for _, decl := range v.decls {
 			if _, ok := decl.(*TypeDecl); ok {
 				if err := s.transDec(decl, FirstPass); err != nil {
@@ -278,11 +312,32 @@ func (s *Semant) transExp(exp Exp) (TransExp, SemantTy, error) {
 			}
 		}
 
+		// 2. Perform two passes to parse function declarations
 		for _, decl := range v.decls {
-			if _, ok := decl.(*TypeDecl); !ok {
+			if _, ok := decl.(*FuncDecl); ok {
+				if err := s.transDec(decl, FirstPass); err != nil {
+					return struct{}{}, nil, err
+				}
+			}
+		}
+
+		for _, decl := range v.decls {
+			if _, ok := decl.(*FuncDecl); ok {
+				if err := s.transDec(decl, SecondPass); err != nil {
+					return struct{}{}, nil, err
+				}
+			}
+		}
+
+		// 3. Parse variable declarations
+		for _, decl := range v.decls {
+			switch decl.(type) {
+			case *VarDecl:
 				if err := s.transDec(decl, IgnorePass); err != nil {
 					return struct{}{}, nil, err
 				}
+			default:
+				continue
 			}
 		}
 
@@ -473,7 +528,11 @@ func (s *Semant) transDec(decl Declaration, pass int) error {
 			return err
 		}
 
-		s.venv.BeginScope()
+		if pass == SecondPass {
+			// Only enter VarEntry at second pass. At first pass, we only gather information (type and params)
+			s.venv.BeginScope()
+			defer s.venv.EndScope()
+		}
 
 		paramsTy := make([]SemantTy, 0, len(v.params))
 		for _, param := range v.params {
@@ -492,29 +551,33 @@ func (s *Semant) transDec(decl Declaration, pass int) error {
 			}
 
 			paramsTy = append(paramsTy, ty)
-			s.venv.Enter(param.name, &VarEntry{
-				ty: ty,
+			if pass == SecondPass {
+				// Only enter VarEntry at second pass. At first pass, we only gather information (type and params)
+				s.venv.Enter(param.name, &VarEntry{
+					ty: ty,
+				})
+			}
+		}
+
+		if pass == FirstPass {
+			s.venv.Enter(v.name, &FunEntry{
+				formals: paramsTy,
+				result:  resultTy,
 			})
+
+			return nil
 		}
 
 		_, bTy, err := s.transExp(v.body)
 		if err != nil {
-			s.venv.EndScope()
 			return err
 		}
 
-		bTy, err = s.actualTy(bTy, v.body.ExpPos())
-		if err != nil {
-			s.venv.EndScope()
-			return err
-		}
-
-		s.venv.EndScope()
 		if !isSameType(bTy, resultTy) {
 			return mismatchTypeErr(resultTy, bTy, v.body.ExpPos())
 		}
 
-		s.venv.Enter(v.name, &FunEntry{
+		s.venv.Replace(v.name, &FunEntry{
 			formals: paramsTy,
 			result:  resultTy,
 		})
@@ -657,17 +720,11 @@ func (s *Semant) transTypeDecl(ty Ty, pass int) (SemantTy, error) {
 			types = append(types, fTy)
 		}
 
-		recordSemantTy := &RecordSemantTy{
+		return &RecordSemantTy{
 			symbols: symbols,
 			types:   types,
 			u:       rand.Int63(),
-		}
-
-		for _, pos := range recursivePos {
-			recordSemantTy.types[pos] = recordSemantTy
-		}
-
-		return recordSemantTy, nil
+		}, nil
 	}
 
 	return nil, nil

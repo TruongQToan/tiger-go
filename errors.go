@@ -20,7 +20,11 @@ func invalidNumberOfRecordFieldErr(pos Pos) error {
 }
 
 func fieldNotFoundErr(field string, recordTy string, pos Pos) error {
-	return fmt.Errorf("field %s not found in record %s at %s", field, recordTy, pos.String())
+	if len(recordTy) > 0 {
+		return fmt.Errorf("field %s not found in record %s at %s", field, recordTy, pos.String())
+	}
+
+	return fmt.Errorf("field %s not found at %s", field, pos.String())
 }
 
 func undefinedVarErr(v string, pos Pos) error {
