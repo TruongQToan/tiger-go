@@ -39,6 +39,50 @@ func (s *Strings) Symbol(str string) Symbol {
 	return s.nextSymbol
 }
 
+type EscapeST struct {
+	st *BaseST
+}
+
+func NewEscapeST(strings *Strings) *EscapeST {
+	return &EscapeST{
+		st: NewST(strings),
+	}
+}
+
+func (est *EscapeST) BeginScope() {
+	panic("not implemented")
+}
+
+func (est *EscapeST) EndScope() {
+	panic("not implemented")
+}
+
+func (est *EscapeST) Enter(sym Symbol, data *EscapeEntry) {
+	est.st.Enter(sym, data)
+}
+
+func (vst *EscapeST) Look(sym Symbol) (*EscapeEntry, error) {
+	v, err := vst.st.Look(sym)
+	if err != nil {
+		return nil, err
+	}
+
+	v1, ok := v.(*EscapeEntry)
+	if !ok {
+		panic("expect env entry in variable ST")
+	}
+
+	return v1, nil
+}
+
+func (vst *EscapeST) Replace(sym Symbol, data *EscapeEntry) {
+	vst.st.Replace(sym, data)
+}
+
+func (vst *EscapeST) Name(sym Symbol) string {
+	return vst.st.Name(sym)
+}
+
 type VarST struct {
 	st *BaseST
 }

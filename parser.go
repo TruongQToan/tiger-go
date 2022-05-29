@@ -165,7 +165,7 @@ func (p *Parser) forExp() (Exp, error) {
 				val: 1,
 			},
 			body: &SequenceExp{
-				seq: []Exp{
+				exps: []Exp{
 					body,
 					&IfExp{
 						predicate: &OperExp{
@@ -621,7 +621,7 @@ func (p *Parser) fieldDecl() (*Field, error) {
 	typSym := p.strings.Symbol(tok.value.(string))
 	return &Field{
 		name:   varSym,
-		escape: false,
+		escape: true,
 		typ:    typSym,
 		pos:    pos,
 	}, p.nextToken()
@@ -914,7 +914,7 @@ func (p *Parser) varDecl() (Declaration, error) {
 
 	return &VarDecl{
 		name:   varName,
-		escape: false,
+		escape: true,
 		typ:    ty,
 		init:   init,
 		pos:    pos,
@@ -1016,14 +1016,14 @@ LOOP:
 			seqExp = e
 		} else {
 			seqExp = &SequenceExp{
-				seq: exps,
-				pos: firstExpPos,
+				exps: exps,
+				pos:  firstExpPos,
 			}
 		}
 	} else {
 		seqExp = &SequenceExp{
-			seq: exps,
-			pos: firstExpPos,
+			exps: exps,
+			pos:  firstExpPos,
 		}
 	}
 
@@ -1106,8 +1106,8 @@ func (p *Parser) seqExp() (Exp, error) {
 	}
 
 	return &SequenceExp{
-		seq: seqExp,
-		pos: pos,
+		exps: seqExp,
+		pos:  pos,
 	}, nil
 }
 

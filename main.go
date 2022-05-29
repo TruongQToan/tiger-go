@@ -12,6 +12,8 @@ import (
 
 var fileName = flag.String("source", "./test_files/record.tig", "source file to compile")
 
+var tm *TempManagement
+
 func main() {
 	f, err := os.ReadFile(*fileName)
 	if err != nil {
@@ -32,6 +34,12 @@ func main() {
 	exp.String(strs, &strBuilder, 0)
 	fmt.Println(strBuilder.String())
 
+	findEscape := NewFindEscape(strs)
+	findEscape.FindEscape(exp)
+
+	tm = NewTempManagement(strs)
+
+	translate := NewT
 	venv, tenv := InitBaseVarEnv(strs), InitBaseTypeEnv(strs)
 	semant := NewSemant(strs, venv, tenv)
 	if err := semant.TransProg(exp); err != nil {

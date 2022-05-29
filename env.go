@@ -69,12 +69,15 @@ type EnvEntry interface {
 }
 
 type VarEntry struct {
-	ty SemantTy
+	ty     SemantTy
+	access *TranslateAccess
 }
 
 func (v *VarEntry) IsEnvEntry() {}
 
 type FunEntry struct {
+	level   *Level
+	label   Label
 	formals []SemantTy
 	result  SemantTy
 }
@@ -98,4 +101,9 @@ func InitBaseVarEnv(strs *Strings) *VarST {
 	}
 
 	return symbols
+}
+
+type EscapeEntry struct {
+	depth int
+	escape *bool
 }

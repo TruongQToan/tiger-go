@@ -101,7 +101,7 @@ type Declaration interface {
 
 type Field struct {
 	name   Symbol
-	escape bool
+	escape *bool
 	typ    Symbol
 	pos    Pos
 }
@@ -120,7 +120,7 @@ func (f *Field) String(strs *Strings, strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Escape\n")
 	indent(strBuilder, level+2)
-	strBuilder.WriteString(strconv.FormatBool(f.escape) + "\n")
+	strBuilder.WriteString(strconv.FormatBool(*f.escape) + "\n")
 }
 
 type FuncDecl struct {
@@ -160,7 +160,7 @@ func (f *FuncDecl) String(strs *Strings, strBuilder *strings.Builder, level int)
 
 type VarDecl struct {
 	name   Symbol
-	escape bool
+	escape *bool
 	typ    Symbol
 	init   Exp
 	pos    Pos
@@ -184,7 +184,7 @@ func (f *VarDecl) String(strs *Strings, strBuilder *strings.Builder, level int) 
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Escape\n")
 	indent(strBuilder, level+2)
-	strBuilder.WriteString(strconv.FormatBool(f.escape) + "\n")
+	strBuilder.WriteString(strconv.FormatBool(*f.escape) + "\n")
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Init\n")
 	f.init.String(strs, strBuilder, level+2)
@@ -368,28 +368,6 @@ func (e *CallExp) ExpPos() Pos {
 	return e.pos
 }
 
-type FieldExp struct {
-	firstExp  Exp
-	fieldName Symbol
-	pos       Pos
-}
-
-func (e *FieldExp) String(strs *Strings, strBuilder *strings.Builder, level int) {
-	indent(strBuilder, level)
-	strBuilder.WriteString("FieldExp\n")
-	indent(strBuilder, level+1)
-	strBuilder.WriteString("FirstExp\n")
-	e.firstExp.String(strs, strBuilder, level+2)
-	indent(strBuilder, level+1)
-	strBuilder.WriteString("Fiel.Get\n")
-	indent(strBuilder, level+2)
-	strBuilder.WriteString(strs.Get(e.fieldName) + "\n")
-}
-
-func (e *FieldExp) ExpPos() Pos {
-	return e.pos
-}
-
 type IfExp struct {
 	predicate Exp
 	then      Exp
@@ -418,7 +396,7 @@ func (e *IfExp) ExpPos() Pos {
 }
 
 type IntExp struct {
-	val int64
+	val int32
 	pos Pos
 }
 
@@ -518,14 +496,14 @@ func (e *RecordExp) ExpPos() Pos {
 }
 
 type SequenceExp struct {
-	seq []Exp
-	pos Pos
+	exps []Exp
+	pos  Pos
 }
 
 func (e *SequenceExp) String(strs *Strings, strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level)
 	strBuilder.WriteString("SequenceExp\n")
-	for _, field := range e.seq {
+	for _, field := range e.exps {
 		field.String(strs, strBuilder, level+1)
 	}
 }
