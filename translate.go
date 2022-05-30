@@ -1,6 +1,9 @@
 package main
 
-import "math/rand"
+import (
+	"math/rand"
+	"strings"
+)
 
 var (
 	frags []Frag
@@ -12,6 +15,7 @@ type TransExp interface {
 	unEx() ExpIr
 	unNx() StmIr
 	unCx() cxFunc
+	print(sb *strings.Builder, level int)
 }
 
 func isNop(e TransExp) bool {
@@ -24,6 +28,10 @@ func isNop(e TransExp) bool {
 
 type Ex struct {
 	exp ExpIr
+}
+
+func (e *Ex) print(sb *strings.Builder, level int) {
+	e.exp.printExpIr(sb, level)
 }
 
 func (e *Ex) unEx() ExpIr {
@@ -79,6 +87,10 @@ type Nx struct {
 	stm StmIr
 }
 
+func (s *Nx) print(sb *strings.Builder, level int) {
+	s.stm.printStm(sb, level)
+}
+
 func (s *Nx) unEx() ExpIr {
 	return &EsEqExpIr{
 		stm: s.stm,
@@ -98,10 +110,15 @@ type Cx struct {
 	cx cxFunc
 }
 
+func (c *Cx) print(sb *strings.Builder, level int) {
+	c.unEx().printExpIr(sb, level)
+}
+
 func (c *Cx) unCx() cxFunc {
 	return c.cx
 }
 
+// TODO: simplify this using helper function
 func (c *Cx) unEx() ExpIr {
 	r, t, f := tm.NewTemp(), tm.NewLabel(), tm.NewLabel()
 	return &EsEqExpIr{

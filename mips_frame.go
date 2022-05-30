@@ -82,6 +82,8 @@ func (f *MipsFrame) createAccesses(i int32, escapes []bool) {
 		acc = &InRegMipsAccess{tm.NewTemp()}
 	}
 
+	f.accesses = append(f.accesses, acc)
+
 	f.shipInstrs = &SeqStmIr{
 		first: &MoveStmIr{
 			dst: acc.exp(&TempExpIr{fp}),

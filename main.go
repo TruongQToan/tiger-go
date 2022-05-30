@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"flag"
-	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -12,7 +11,10 @@ import (
 
 var fileName = flag.String("source", "./test_files/record.tig", "source file to compile")
 
-var tm *TempManagement
+var (
+	strs = NewStrings()
+	tm = NewTempManagement()
+)
 
 func main() {
 	f, err := os.ReadFile(*fileName)
@@ -23,26 +25,31 @@ func main() {
 	buf := bufio.NewReader(bytes.NewReader(f))
 	lexer := NewLexer(*fileName, buf)
 
-	strs := NewStrings()
 	parser := NewParser(lexer, strs)
 	exp, err := parser.Parse()
 	if err != nil {
 		log.Fatalf("parsing error %v", err)
 	}
 
-	strBuilder := strings.Builder{}
-	exp.String(strs, &strBuilder, 0)
-	fmt.Println(strBuilder.String())
-
-	findEscape := NewFindEscape(strs)
+	findEscape := NewFindEscape()
 	findEscape.FindEscape(exp)
 
-	tm = NewTempManagement(strs)
+	translate := Translate{frameFactory: NewMipsFrame}
+	venv, tenv := InitBaseVarEnv(), InitBaseTypeEnv()
+	semant := NewSemant(&translate, venv, tenv)
 
-	translate := NewT
-	venv, tenv := InitBaseVarEnv(strs), InitBaseTypeEnv(strs)
-	semant := NewSemant(strs, venv, tenv)
-	if err := semant.TransProg(exp); err != nil {
+	transExp, err := semant.TransProg(exp)
+	if err != nil {
 		log.Fatalf("semantic error %v", err)
 	}
+
+	strBuilder := strings.Builder{}
+	transExp.print(&strBuilder, 0)
+
+	fo, err := os.Create("tiger_ir.txt")
+	if err != nil {
+		log.Fatalf("cannot create file %v", err)
+	}
+
+	fo.WriteString(strBuilder.String())
 }

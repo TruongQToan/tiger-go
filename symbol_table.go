@@ -43,9 +43,9 @@ type EscapeST struct {
 	st *BaseST
 }
 
-func NewEscapeST(strings *Strings) *EscapeST {
+func NewEscapeST() *EscapeST {
 	return &EscapeST{
-		st: NewST(strings),
+		st: NewST(),
 	}
 }
 
@@ -87,8 +87,8 @@ type VarST struct {
 	st *BaseST
 }
 
-func NewVarST(strings *Strings) *VarST {
-	return &VarST{st: NewST(strings)}
+func NewVarST() *VarST {
+	return &VarST{st: NewST()}
 }
 
 func (vst *VarST) BeginScope() {
@@ -129,8 +129,8 @@ type TypeST struct {
 	st *BaseST
 }
 
-func NewTypeST(strings *Strings) *TypeST {
-	return &TypeST{st: NewST(strings)}
+func NewTypeST() *TypeST {
+	return &TypeST{st: NewST()}
 }
 
 func (vst *TypeST) BeginScope() {
@@ -169,13 +169,11 @@ func (vst *TypeST) Name(sym Symbol) string {
 
 type BaseST struct {
 	stack   [][]Symbol
-	strings *Strings
 	table   map[Symbol][]interface{}
 }
 
-func NewST(strings *Strings) *BaseST {
+func NewST() *BaseST {
 	st := BaseST{
-		strings: strings,
 		table:   make(map[Symbol][]interface{}),
 	}
 
@@ -229,7 +227,7 @@ func (s *BaseST) Look(sym Symbol) (interface{}, error) {
 }
 
 func (s *BaseST) Name(sym Symbol) string {
-	return s.strings.strings[sym]
+	return strs.strings[sym]
 }
 
 func (s *BaseST) Replace(sym Symbol, data interface{}) {

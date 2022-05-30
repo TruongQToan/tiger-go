@@ -568,7 +568,7 @@ func (p *Parser) intConst() (Exp, error) {
 	}
 
 	return &IntExp{
-		val: tok.value.(int64),
+		val: tok.value.(int32),
 		pos: tok.pos,
 	}, nil
 }
@@ -619,9 +619,10 @@ func (p *Parser) fieldDecl() (*Field, error) {
 	}
 
 	typSym := p.strings.Symbol(tok.value.(string))
+	escape := true
 	return &Field{
 		name:   varSym,
-		escape: true,
+		escape: &escape,
 		typ:    typSym,
 		pos:    pos,
 	}, p.nextToken()
@@ -912,9 +913,10 @@ func (p *Parser) varDecl() (Declaration, error) {
 		return nil, err
 	}
 
+	escape := true
 	return &VarDecl{
 		name:   varName,
-		escape: true,
+		escape: &escape,
 		typ:    ty,
 		init:   init,
 		pos:    pos,

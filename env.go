@@ -84,19 +84,20 @@ type FunEntry struct {
 
 func (v *FunEntry) IsEnvEntry() {}
 
-func InitBaseTypeEnv(strs *Strings) *TypeST {
-	symbols := NewTypeST(strs)
+func InitBaseTypeEnv() *TypeST {
+	symbols := NewTypeST()
 	symbols.Enter(strs.Symbol("int"), &IntSemantTy{})
 	symbols.Enter(strs.Symbol("string"), &StringSemantTy{})
 	return symbols
 }
 
-func InitBaseVarEnv(strs *Strings) *VarST {
-	symbols := NewVarST(strs)
+func InitBaseVarEnv() *VarST {
+	symbols := NewVarST()
 	for _, finfo := range baseFuncs {
 		symbols.Enter(strs.Symbol(finfo.name), &FunEntry{
 			formals: finfo.args,
 			result:  finfo.resTy,
+			level:   OutermostLevel,
 		})
 	}
 
@@ -104,6 +105,6 @@ func InitBaseVarEnv(strs *Strings) *VarST {
 }
 
 type EscapeEntry struct {
-	depth int
+	depth  int
 	escape *bool
 }

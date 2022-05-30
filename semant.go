@@ -15,32 +15,31 @@ const (
 type Semant struct {
 	venv      *VarST
 	tenv      *TypeST
-	strings   *Strings
 	translate *Translate
 }
 
-func NewSemant(trans *Translate, strings *Strings, vent *VarST, tenv *TypeST) *Semant {
+func NewSemant(trans *Translate, vent *VarST, tenv *TypeST) *Semant {
 	return &Semant{
-		strings:   strings,
 		venv:      vent,
 		tenv:      tenv,
 		translate: trans,
 	}
 }
 
-func (s *Semant) TransProg(exp Exp) error {
+func (s *Semant) TransProg(exp Exp) (TransExp, error) {
 	mainLevel := Level{
 		parent: OutermostLevel,
-		frame:  nil,
+		frame:  NewMipsFrame(tm.NamedLabel("main"), []bool{true}),
+		u: rand.Int63(),
 	}
 
-	_, ty, err := s.transExp(&mainLevel, exp, tm.NewLabel())
+	progExp, ty, err := s.transExp(&mainLevel, exp, tm.NewLabel())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	fmt.Printf("Parse type %s\n", ty.TypeName())
-	return nil
+	return progExp, nil
 }
 
 // TODO: refine this one
@@ -70,7 +69,7 @@ func (s *Semant) transVar(level *Level, variable Var, breakLabel Label) (TransEx
 		entry, err := s.venv.Look(v.symbol)
 		if err != nil {
 			if err == errSTNotFound {
-				return nil, nil, undefinedVarErr(s.strings.Get(v.symbol), v.pos)
+				return nil, nil, undefinedVarErr(strs.Get(v.symbol), v.pos)
 			}
 
 			return nil, nil, err
@@ -78,7 +77,7 @@ func (s *Semant) transVar(level *Level, variable Var, breakLabel Label) (TransEx
 
 		e, ok := entry.(*VarEntry)
 		if !ok {
-			return nil, nil, expectedVarButFoundFunErr(s.strings.Get(v.symbol), v.pos)
+			return nil, nil, expectedVarButFoundFunErr(strs.Get(v.symbol), v.pos)
 		}
 
 		sTy, err := s.actualTy(e.ty, v.pos)
@@ -104,7 +103,7 @@ func (s *Semant) transVar(level *Level, variable Var, breakLabel Label) (TransEx
 				semantTy, err := s.tenv.Look(recordTy.types[i])
 				if err != nil {
 					if err == errSTNotFound {
-						return nil, nil, typeNotFoundErr(s.strings.Get(recordTy.types[i]), Pos{})
+						return nil, nil, typeNotFoundErr(strs.Get(recordTy.types[i]), Pos{})
 					}
 
 					return nil, nil, err
@@ -119,7 +118,7 @@ func (s *Semant) transVar(level *Level, variable Var, breakLabel Label) (TransEx
 			}
 		}
 
-		return nil, nil, fieldNotFoundErr(s.strings.Get(v.field), "", v.pos)
+		return nil, nil, fieldNotFoundErr(strs.Get(v.field), "", v.pos)
 
 	case *SubscriptionVar:
 		ve, ty, err := s.transVar(level, v.variable, breakLabel)
@@ -431,7 +430,7 @@ func (s *Semant) transExp(level *Level, exp Exp, breakLabel Label) (TransExp, Se
 		entry, err := s.venv.Look(v.function)
 		if err != nil {
 			if err == errSTNotFound {
-				return nil, nil, functionNotFoundErr(s.strings.Get(v.function), v.pos)
+				return nil, nil, functionNotFoundErr(strs.Get(v.function), v.pos)
 			}
 
 			return nil, nil, err
@@ -439,11 +438,11 @@ func (s *Semant) transExp(level *Level, exp Exp, breakLabel Label) (TransExp, Se
 
 		fEntry, ok := entry.(*FunEntry)
 		if !ok {
-			return nil, nil, functionNotFoundErr(s.strings.Get(v.function), v.pos)
+			return nil, nil, functionNotFoundErr(strs.Get(v.function), v.pos)
 		}
 
 		if len(v.args) != len(fEntry.formals) {
-			return nil, nil, mismatchNumberOfParameters(s.strings.Get(v.function), v.pos)
+			return nil, nil, mismatchNumberOfParameters(strs.Get(v.function), v.pos)
 		}
 
 		args := make([]TransExp, 0, len(v.args))
@@ -478,7 +477,7 @@ func (s *Semant) transExp(level *Level, exp Exp, breakLabel Label) (TransExp, Se
 		tTy, err := s.tenv.Look(v.ty)
 		if err != nil {
 			if err == errSTNotFound {
-				return nil, nil, typeNotFoundErr(s.strings.Get(v.ty), v.pos)
+				return nil, nil, typeNotFoundErr(strs.Get(v.ty), v.pos)
 			}
 
 			return nil, nil, err
@@ -505,7 +504,7 @@ func (s *Semant) transExp(level *Level, exp Exp, breakLabel Label) (TransExp, Se
 		for _, field := range v.fields {
 			idx := ty.HasField(field.ident)
 			if idx == -1 {
-				return nil, nil, fieldNotFoundErr(s.strings.Get(field.ident), s.strings.Get(v.ty), field.pos)
+				return nil, nil, fieldNotFoundErr(strs.Get(field.ident), strs.Get(v.ty), field.pos)
 			}
 
 			fe, eTy, err := s.transExp(level, field.expr, breakLabel)
@@ -516,7 +515,7 @@ func (s *Semant) transExp(level *Level, exp Exp, breakLabel Label) (TransExp, Se
 			semantTy, err := s.tenv.Look(ty.types[idx])
 			if err != nil {
 				// Should not happen
-				return nil, nil, typeNotFoundErr(s.strings.Get(ty.types[idx]), Pos{})
+				return nil, nil, typeNotFoundErr(strs.Get(ty.types[idx]), Pos{})
 			}
 
 			fTy, err := s.actualTy(semantTy, Pos{})
@@ -543,7 +542,7 @@ func (s *Semant) transDec(level *Level, decl Declaration, pass int, breakLabel L
 		resultTy, err := s.tenv.Look(v.resultTy)
 		if err != nil {
 			if err == errSTNotFound {
-				return nil, typeNotFoundErr(s.strings.Get(v.resultTy), v.resultTyPos)
+				return nil, typeNotFoundErr(strs.Get(v.resultTy), v.resultTyPos)
 			}
 
 			return nil, err
@@ -565,7 +564,7 @@ func (s *Semant) transDec(level *Level, decl Declaration, pass int, breakLabel L
 			ty, err := s.tenv.Look(param.typ)
 			if err != nil {
 				if err == errSTNotFound {
-					return nil, typeNotFoundErr(s.strings.Get(param.typ), param.pos)
+					return nil, typeNotFoundErr(strs.Get(param.typ), param.pos)
 				}
 
 				return nil, err
@@ -713,7 +712,7 @@ func (s *Semant) transTypeDecl(ty Ty, pass int) (SemantTy, error) {
 		baseTy, err := s.tenv.Look(v.ty)
 		if err != nil {
 			if err == errSTNotFound {
-				return nil, baseTypeNotFoundErr(s.strings.Get(v.ty), v.TyPos())
+				return nil, baseTypeNotFoundErr(strs.Get(v.ty), v.TyPos())
 			}
 
 			return nil, err
@@ -722,14 +721,14 @@ func (s *Semant) transTypeDecl(ty Ty, pass int) (SemantTy, error) {
 		return &NameSemantTy{
 			baseTy:  baseTy,
 			nameSym: v.ty,
-			name:    s.strings.Get(v.ty),
+			name:    strs.Get(v.ty),
 		}, nil
 
 	case *ArrayTy:
 		baseTy, err := s.tenv.Look(v.ty)
 		if err != nil {
 			if err == errSTNotFound {
-				return nil, baseTypeNotFoundErr(s.strings.Get(v.ty), v.TyPos())
+				return nil, baseTypeNotFoundErr(strs.Get(v.ty), v.TyPos())
 			}
 
 			return nil, err
@@ -757,7 +756,7 @@ func (s *Semant) transTypeDecl(ty Ty, pass int) (SemantTy, error) {
 			_, err := s.tenv.Look(field.typ)
 			if err != nil {
 				if err == errSTNotFound {
-					return nil, typeNotFoundErr(s.strings.Get(field.typ), field.pos)
+					return nil, typeNotFoundErr(strs.Get(field.typ), field.pos)
 				}
 			}
 

@@ -124,12 +124,12 @@ func (lex *Lexer) integer() (*Token, error) {
 		}
 	}
 
-	num, err := strconv.ParseInt(numRepr, 10, 64)
+	num, err := strconv.ParseInt(numRepr, 10, 32)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewInt(num, pos), nil
+	return NewInt(int32(num), pos), nil
 }
 
 func (lex *Lexer) identifier() (*Token, error) {

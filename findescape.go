@@ -5,8 +5,8 @@ type FindEscape struct {
 	escapeEnv *EscapeST
 }
 
-func NewFindEscape(strings *Strings) *FindEscape {
-	return &FindEscape{escapeEnv: NewEscapeST(strings)}
+func NewFindEscape() *FindEscape {
+	return &FindEscape{escapeEnv: NewEscapeST()}
 }
 
 func (t *FindEscape) transVar(v Var, depth int) {
