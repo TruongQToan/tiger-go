@@ -9,7 +9,6 @@ const (
 	IgnorePass = iota
 	FirstPass
 	SecondPass
-	ThirdPass
 )
 
 type Semant struct {
@@ -30,7 +29,7 @@ func (s *Semant) TransProg(exp Exp) (TransExp, error) {
 	mainLevel := Level{
 		parent: OutermostLevel,
 		frame:  NewMipsFrame(tm.NamedLabel("main"), []bool{true}),
-		u: rand.Int63(),
+		u:      rand.Int63(),
 	}
 
 	progExp, ty, err := s.transExp(&mainLevel, exp, tm.NewLabel())
@@ -57,7 +56,7 @@ func (s *Semant) actualTy(ty SemantTy, pos Pos) (SemantTy, error) {
 			return nil, err
 		}
 
-		return &ArrSemantTy{baseTy: baseTy, u: rand.Int63()}, nil
+		return &ArrSemantTy{baseTy: baseTy, u: v.u}, nil
 	default:
 		return ty, nil
 	}
@@ -237,6 +236,9 @@ func (s *Semant) transExp(level *Level, exp Exp, breakLabel Label) (TransExp, Se
 	case *IntExp:
 		return s.translate.intExp(v.val), &IntSemantTy{}, nil
 
+	case *UnitExp:
+		return s.translate.unitExp(), &UnitSemantTy{}, nil
+
 	case *NilExp:
 		return s.translate.nilExp(), &NilSemantTy{}, nil
 
@@ -279,7 +281,7 @@ func (s *Semant) transExp(level *Level, exp Exp, breakLabel Label) (TransExp, Se
 
 		return s.translate.arrayExp(sEx, iEx), &ArrSemantTy{
 			baseTy: aty.baseTy,
-			u:      rand.Int63(),
+			u:      aty.u,
 		}, nil
 
 	case *SequenceExp:
@@ -366,6 +368,44 @@ func (s *Semant) transExp(level *Level, exp Exp, breakLabel Label) (TransExp, Se
 		}
 
 		return s.translate.assign(vex, eex), &UnitSemantTy{}, nil
+
+	case *ForExp:
+		fEx, fTy, err := s.transExp(level, v.from, breakLabel)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		tEx, tTy, err := s.transExp(level, v.to, breakLabel)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		if !isSameType(fTy, &IntSemantTy{}) {
+			return nil, nil, mismatchTypeErr(&IntSemantTy{}, fTy, v.from.ExpPos())
+		}
+
+		if !isSameType(tTy, &IntSemantTy{}) {
+			return nil, nil, mismatchTypeErr(&IntSemantTy{}, tTy, v.to.ExpPos())
+		}
+
+		s.venv.BeginScope()
+
+		acc := s.translate.AllocLocal(level, true)
+		s.venv.Enter(v.sym, &VarEntry{
+			ty:     &IntSemantTy{},
+			access: acc,
+		})
+
+		doneLabel := tm.NewLabel()
+		bEx, bTy, err := s.transExp(level, v.body, doneLabel)
+		if !isSameType(bTy, &UnitSemantTy{}) {
+			s.venv.EndScope()
+			return nil, nil, mismatchTypeErr(&UnitSemantTy{}, bTy, v.body.ExpPos())
+		}
+
+		s.venv.EndScope()
+
+		return s.translate.forLoop(level, acc, fEx, tEx, bEx, doneLabel), &UnitSemantTy{}, nil
 
 	case *IfExp:
 		ifEx, pTy, err := s.transExp(level, v.predicate, breakLabel)
@@ -465,10 +505,10 @@ func (s *Semant) transExp(level *Level, exp Exp, breakLabel Label) (TransExp, Se
 		}
 
 		if _, ok := fEntry.result.(*NilSemantTy); ok {
-			return s.translate.call(level, fEntry.level.parent, fEntry.label, args, true), fEntry.result, nil
+			return s.translate.call(level, fEntry.level, fEntry.label, args, true), fEntry.result, nil
 		}
 
-		return s.translate.call(level, fEntry.level.parent, fEntry.label, args, false), fEntry.result, nil
+		return s.translate.call(level, fEntry.level, fEntry.label, args, false), fEntry.result, nil
 
 	case *BreakExp:
 		return s.translate.breakStm(breakLabel), &UnitSemantTy{}, nil
@@ -539,13 +579,22 @@ func (s *Semant) transExp(level *Level, exp Exp, breakLabel Label) (TransExp, Se
 func (s *Semant) transDec(level *Level, decl Declaration, pass int, breakLabel Label) (TransExp, error) {
 	switch v := decl.(type) {
 	case *FuncDecl:
-		resultTy, err := s.tenv.Look(v.resultTy)
-		if err != nil {
-			if err == errSTNotFound {
-				return nil, typeNotFoundErr(strs.Get(v.resultTy), v.resultTyPos)
-			}
+		var (
+			resultTy SemantTy
+			err error
+		)
 
-			return nil, err
+		if v.resultTy == 0 {
+			resultTy = &UnitSemantTy{}
+		} else {
+			resultTy, err = s.tenv.Look(v.resultTy)
+			if err != nil {
+				if err == errSTNotFound {
+					return nil, typeNotFoundErr(strs.Get(v.resultTy), v.resultTyPos)
+				}
+
+				return nil, err
+			}
 		}
 
 		resultTy, err = s.actualTy(resultTy, v.pos)
@@ -584,7 +633,7 @@ func (s *Semant) transDec(level *Level, decl Declaration, pass int, breakLabel L
 			}
 		}
 
-		es := make([]bool, 0, 1 + len(v.params))
+		es := make([]bool, 0, 1+len(v.params))
 		es = append(es, true)
 		for _, p := range v.params {
 			es = append(es, *p.escape)
@@ -735,9 +784,10 @@ func (s *Semant) transTypeDecl(ty Ty, pass int) (SemantTy, error) {
 			return nil, err
 		}
 
+		u := rand.Int63()
 		return &ArrSemantTy{
 			baseTy: baseTy,
-			u:      rand.Int63(),
+			u:      u,
 		}, nil
 
 	case *RecordTy:

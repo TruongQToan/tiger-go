@@ -77,6 +77,9 @@ func (t *NameSemantTy) TypeName() string {
 
 func isSameType(ty1, ty2 SemantTy) bool {
 	switch v1 := ty1.(type) {
+	case *UnitSemantTy:
+		return isUnit(ty2)
+
 	case *NilSemantTy:
 		// TODO: is this correct?
 		return isRecord(ty2)
@@ -100,7 +103,7 @@ func isSameType(ty1, ty2 SemantTy) bool {
 	case *ArrSemantTy:
 		switch v2 := ty2.(type) {
 		case *ArrSemantTy:
-			return v2.u == v1.u
+			return v2.u == v1.u && isSameType(v1.baseTy, v2.baseTy)
 		default:
 			return false
 		}
@@ -108,9 +111,9 @@ func isSameType(ty1, ty2 SemantTy) bool {
 	case *NameSemantTy:
 		switch v2 := ty2.(type) {
 		case *NameSemantTy:
-			return v1.nameSym == v2.nameSym
+			return isSameType(v1.baseTy, v2.baseTy)
 		default:
-			return false
+			return isSameType(v1.baseTy, v2)
 		}
 	}
 
@@ -118,26 +121,43 @@ func isSameType(ty1, ty2 SemantTy) bool {
 }
 
 func isInt(ty SemantTy) bool {
-	switch ty.(type) {
+	switch v := ty.(type) {
 	case *IntSemantTy:
 		return true
+	case *NameSemantTy:
+		return isInt(v.baseTy)
 	default:
 		return false
 	}
 }
 
 func isString(ty SemantTy) bool {
-	switch ty.(type) {
+	switch v := ty.(type) {
 	case *StringSemantTy:
 		return true
+	case *NameSemantTy:
+		return isString(v.baseTy)
 	default:
 		return false
 	}
 }
 
 func isRecord(ty SemantTy) bool {
-	switch ty.(type) {
+	switch v := ty.(type) {
 	case *RecordSemantTy:
+		return true
+	case *NilSemantTy:
+		return true
+	case *NameSemantTy:
+		return isRecord(v.baseTy)
+	default:
+		return false
+	}
+}
+
+func isUnit(ty SemantTy) bool {
+	switch ty.(type) {
+	case *UnitSemantTy:
 		return true
 	default:
 		return false

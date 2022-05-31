@@ -434,6 +434,19 @@ func (e *LetExp) ExpPos() Pos {
 	return e.pos
 }
 
+type UnitExp struct {
+	pos Pos
+}
+
+func (e *UnitExp) String(strBuilder *strings.Builder, level int) {
+	indent(strBuilder, level)
+	strBuilder.WriteString("Unit\n")
+}
+
+func (e *UnitExp) ExpPos() Pos {
+	return e.pos
+}
+
 type NilExp struct {
 	pos Pos
 }
@@ -540,6 +553,36 @@ func (e *VarExp) String(strBuilder *strings.Builder, level int) {
 
 func (e *VarExp) ExpPos() Pos {
 	return e.v.VarPos()
+}
+
+type ForExp struct {
+	from Exp
+	to   Exp
+	body Exp
+	pos  Pos
+	sym  Symbol
+}
+
+func (e *ForExp) String(strBuilder *strings.Builder, level int) {
+	indent(strBuilder, level)
+	strBuilder.WriteString("ForExp\n")
+	indent(strBuilder, level+1)
+	strBuilder.WriteString("ItVar\n")
+	indent(strBuilder, level+2)
+	strBuilder.WriteString(strs.Get(e.sym) + "\n")
+	indent(strBuilder, level+1)
+	strBuilder.WriteString("From\n")
+	e.from.String(strBuilder, level+2)
+	indent(strBuilder, level+1)
+	strBuilder.WriteString("To\n")
+	e.to.String(strBuilder, level+2)
+	indent(strBuilder, level+1)
+	strBuilder.WriteString("Body\n")
+	e.body.String(strBuilder, level+2)
+}
+
+func (e *ForExp) ExpPos() Pos {
+	return e.pos
 }
 
 type WhileExp struct {

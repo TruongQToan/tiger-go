@@ -179,7 +179,7 @@ func (l *Level) depth() int32 {
 }
 
 func (l *Level) staticLink(from *Level, base ExpIr) ExpIr {
-	if from.u == l.u {
+	if from.parent == nil || from.u == l.u {
 		return base
 	}
 
@@ -345,6 +345,10 @@ func (t *Translate) nilExp() TransExp {
 	return &Ex{
 		&ConstExpIr{0},
 	}
+}
+
+func (t *Translate) unitExp() TransExp {
+	return &Nx{stm: &ExpStmIr{&ConstExpIr{0}}}
 }
 
 func (t *Translate) arrayExp(size, init TransExp) TransExp {
@@ -519,14 +523,35 @@ func (t *Translate) ifElse(ifEx, thenEx, elseEx TransExp) TransExp {
 	panic("invalid case of if statement")
 }
 
-func (t *Translate) whileLoop(tex, bex TransExp, doneLabel Label) TransExp {
+func (t *Translate) forLoop(level *Level, acc *TranslateAccess, from, to, body TransExp, doneLabel Label) TransExp {
+	itVar := t.simpleVar(level, acc)
+	bstm := SeqStmIr{
+		first: body.unNx(),
+		second: &MoveStmIr{
+			dst: itVar.unEx(),
+			src: &BinOpExpIr{
+				binop: PlusIr,
+				left:  itVar.unEx(),
+				right: &ConstExpIr{1},
+			},
+		},
+	}
+
+	return t.whileLoop(
+		t.RelOp(Le, itVar, to),
+		&Nx{t.seqStm(t.assign(itVar, from).unNx(), &bstm)},
+		doneLabel,
+	)
+}
+
+func (t *Translate) whileLoop(pex, bex TransExp, doneLabel Label) TransExp {
 	tl, bl := tm.NewLabel(), tm.NewLabel()
 	return &Nx{
 		t.seqStm(
 			&LabelStmIr{tl},
 			&CJumpStmIr{
 				relop:      EqIr,
-				left:       tex.unEx(),
+				left:       pex.unEx(),
 				right:      &ConstExpIr{0},
 				trueLabel:  doneLabel,
 				falseLabel: bl,

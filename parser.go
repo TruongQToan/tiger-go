@@ -77,10 +77,6 @@ func (p *Parser) forExp() (Exp, error) {
 	}
 
 	sym := p.strings.Symbol(varName)
-	itVar := &SimpleVar{
-		symbol: sym,
-		pos:    tok.pos,
-	}
 
 	tok, err := p.peekNext()
 	if err != nil {
@@ -140,61 +136,12 @@ func (p *Parser) forExp() (Exp, error) {
 		return nil, err
 	}
 
-	endSymbol := p.strings.Symbol(varName + "_end")
-	escape1, escape2 := true, true
-	declarations := []Declaration{
-		&VarDecl{
-			name:   sym,
-			init:   start,
-			escape: &escape1,
-		},
-		&VarDecl{
-			name:   endSymbol,
-			init:   end,
-			escape: &escape2,
-		},
-	}
-
-	whileBody := IfExp{
-		predicate: &OperExp{
-			left: &VarExp{itVar},
-			op:   Le,
-			right: &VarExp{
-				&SimpleVar{symbol: endSymbol},
-			},
-		},
-		then: &WhileExp{
-			pred: &IntExp{
-				val: 1,
-			},
-			body: &SequenceExp{
-				exps: []Exp{
-					&IfExp{
-						predicate: &OperExp{
-							left:  &VarExp{itVar},
-							op:    Lt,
-							right: &VarExp{&SimpleVar{symbol: endSymbol}},
-						},
-						then: &AssignExp{
-							exp: &OperExp{
-								left:  &VarExp{itVar},
-								op:    Plus,
-								right: &IntExp{val: 1},
-							},
-							variable: itVar,
-						},
-						els: &BreakExp{},
-					},
-					body,
-				},
-			},
-		},
-	}
-
-	return &LetExp{
-		body:  &whileBody,
-		decls: declarations,
-		pos:   pos,
+	return &ForExp{
+		sym:  sym,
+		from: start,
+		to:   end,
+		body: body,
+		pos:  pos,
 	}, nil
 }
 
@@ -1071,7 +1018,7 @@ func (p *Parser) seqExp() (Exp, error) {
 			return nil, err
 		}
 
-		return &NilExp{pos: p.peekToken().pos}, nil
+		return &UnitExp{p.peekToken().pos}, nil
 	}
 
 	exp, err := p.Exp()
