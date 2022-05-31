@@ -1,79 +1,32 @@
+
 Procedure Frag
+g
 Move
   Src
-    Call
-      FuncName
-        NameExp
-          do_nothing2
-      Arguments
-        Mem
-          Plus
-            Left
-              Mem
-                Plus
-                  Left
-                    Temp
-                      t5
-                  Right
-                    Const
-                      0
-            Right
-              Const
-                0
-        Plus
-          Left
-            Mem
-              Plus
-                Left
-                  Temp
-                    t5
-                Right
-                  Const
-                    4
-          Right
-            Const
-              1
+    Mem
+      Plus
+        Left
+          Temp
+            t5
+        Right
+          Const
+            4
   Dest
     Temp
       t6
-String Frag
-L8
-str
+
 Procedure Frag
+g
 Move
   Src
-    Call
-      FuncName
-        NameExp
-          do_nothing1
-      Arguments
-        Mem
-          Plus
-            Left
-              Mem
-                Plus
-                  Left
-                    Temp
-                      t5
-                  Right
-                    Const
-                      0
-            Right
-              Const
-                0
-        Mem
-          Plus
-            Left
-              Temp
-                t5
-            Right
-              Const
-                4
-        NameExp
-          L8
+    Mem
+      Plus
+        Left
+          Temp
+            t5
+        Right
+          Const
+            4
   Dest
     Temp
       t6
-String Frag
-L9
-str2

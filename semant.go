@@ -94,7 +94,7 @@ func (s *Semant) transVar(level *Level, variable Var, breakLabel Label) (TransEx
 
 		recordTy, ok := ty1.(*RecordSemantTy)
 		if !ok {
-			return nil, nil, mismatchTypeErr(&RecordSemantTy{}, recordTy, v.pos)
+			return nil, nil, mismatchTypeErr(&RecordSemantTy{}, ty1, v.pos)
 		}
 
 		for i, field := range recordTy.symbols {
@@ -127,7 +127,7 @@ func (s *Semant) transVar(level *Level, variable Var, breakLabel Label) (TransEx
 
 		arrTy, ok := ty.(*ArrSemantTy)
 		if !ok {
-			return nil, nil, mismatchTypeErr(&ArrSemantTy{}, arrTy, v.pos)
+			return nil, nil, mismatchTypeErr(&ArrSemantTy{}, ty, v.pos)
 		}
 
 		// 2. Check the expr is int or not

@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-var fileName = flag.String("source", "./test_files/test6.tig", "source file to compile")
+var fileName = flag.String("source", "./test_files/test40.tig", "source file to compile")
 
 var (
 	strs = NewStrings()
@@ -61,12 +61,13 @@ func main() {
 	strBuilder.Reset()
 	for _, frag := range frags {
 		if f, ok := frag.(*ProcFrag); ok {
-			strBuilder.WriteString("Procedure Frag\n")
+			strBuilder.WriteString("\nProcedure Frag\n")
+			strBuilder.WriteString(strs.Get(Symbol(f.frame.Name())) + "\n")
 			f.body.printStm(&strBuilder, 0)
 		}
 
 		if f, ok := frag.(*StringFrag); ok {
-			strBuilder.WriteString("String Frag\n")
+			strBuilder.WriteString("\nString Frag\n")
 			strBuilder.WriteString(strs.Get(Symbol(f.label)) + "\n")
 			strBuilder.WriteString(f.str + "\n")
 		}

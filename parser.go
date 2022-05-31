@@ -1,5 +1,7 @@
 package main
 
+import "errors"
+
 type Parser struct {
 	lexer     *Lexer
 	lookahead *Token
@@ -238,7 +240,12 @@ func (p *Parser) funcArgs() ([]Exp, error) {
 
 func (p *Parser) oneField() (*RecordField, error) {
 	tok := p.peekToken()
-	name := tok.value.(string)
+	name, ok := tok.value.(string)
+	if !ok {
+		// TODO: test 33
+		return nil, errors.New("invalid record")
+	}
+
 	sym := p.strings.Symbol(name)
 	pos := tok.pos
 
