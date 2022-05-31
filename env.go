@@ -98,6 +98,7 @@ func InitBaseVarEnv() *VarST {
 			formals: finfo.args,
 			result:  finfo.resTy,
 			level:   OutermostLevel,
+			label:   tm.NamedLabel(finfo.name),
 		})
 	}
 

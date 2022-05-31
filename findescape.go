@@ -1,6 +1,5 @@
 package main
 
-
 type FindEscape struct {
 	escapeEnv *EscapeST
 }

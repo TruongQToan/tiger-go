@@ -206,6 +206,8 @@ func (t *Translate) Formals(level *Level) []*TranslateAccess {
 
 	// first formal is static chain offset
 	frameAccesses := level.frame.Formals()[1:]
+
+	// frameAccesses := level.frame.Formals()
 	translateAccesses := make([]*TranslateAccess, 0, len(frameAccesses))
 	for _, acc := range frameAccesses {
 		translateAccesses = append(translateAccesses, &TranslateAccess{
@@ -230,6 +232,7 @@ func (t *Translate) AllocLocal(level *Level, escape bool) *TranslateAccess {
 
 func (t *Translate) simpleVar(level *Level, access *TranslateAccess) TransExp {
 	curLevel, defLevel := level, access.level
+
 	var acc ExpIr
 	acc = &TempExpIr{fp}
 
@@ -287,7 +290,7 @@ func (t *Translate) BinOp(op Operator, left TransExp, right TransExp) TransExp {
 	}}
 }
 
-func (t *Translate) RelOp(op Operator, left TransExp, right TransExp) TransExp {
+func (t *Translate) RelOp(op Operator, left, right TransExp) TransExp {
 	leftEx, rightEx := left.unEx(), right.unEx()
 	var opIr RelOpIr
 	switch op {
@@ -384,7 +387,7 @@ func (t *Translate) call(useLevel, defLevel *Level, label Label, exps []TransExp
 		args = append(args, e.unEx())
 	}
 
-	if isProcedure {
+	if !isProcedure {
 		return &Ex{
 			&CallExpIr{
 				exp:  &NameExpIr{label},
@@ -429,8 +432,8 @@ func (t *Translate) seq(head, tail TransExp) TransExp {
 
 func (t *Translate) assign(left, right TransExp) TransExp {
 	return &Nx{&MoveStmIr{
-		dst: right.unEx(),
-		src: left.unEx(),
+		dst: left.unEx(),
+		src: right.unEx(),
 	}}
 }
 

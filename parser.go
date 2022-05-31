@@ -141,14 +141,17 @@ func (p *Parser) forExp() (Exp, error) {
 	}
 
 	endSymbol := p.strings.Symbol(varName + "_end")
+	escape1, escape2 := true, true
 	declarations := []Declaration{
 		&VarDecl{
-			name: sym,
-			init: start,
+			name:   sym,
+			init:   start,
+			escape: &escape1,
 		},
 		&VarDecl{
-			name: endSymbol,
-			init: end,
+			name:   endSymbol,
+			init:   end,
+			escape: &escape2,
 		},
 	}
 
@@ -166,7 +169,6 @@ func (p *Parser) forExp() (Exp, error) {
 			},
 			body: &SequenceExp{
 				exps: []Exp{
-					body,
 					&IfExp{
 						predicate: &OperExp{
 							left:  &VarExp{itVar},
@@ -183,10 +185,10 @@ func (p *Parser) forExp() (Exp, error) {
 						},
 						els: &BreakExp{},
 					},
+					body,
 				},
 			},
 		},
-		els: nil,
 	}
 
 	return &LetExp{
@@ -703,7 +705,7 @@ func (p *Parser) funcDecl() (*FuncDecl, error) {
 		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
 
-	ty, pos, err := p.optionalType()
+	ty, _, err := p.optionalType()
 	if err != nil {
 		return nil, err
 	}
@@ -730,7 +732,7 @@ func (p *Parser) funcDecl() (*FuncDecl, error) {
 		name:        functionNameSym,
 		params:      params,
 		resultTy:    ty,
-		resultTyPos: *pos,
+		resultTyPos: funcPos,
 		body:        body,
 		pos:         funcPos,
 	}, nil

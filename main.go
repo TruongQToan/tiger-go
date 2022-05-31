@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-var fileName = flag.String("source", "./test_files/record.tig", "source file to compile")
+var fileName = flag.String("source", "./test_files/test12.tig", "source file to compile")
 
 var (
 	strs = NewStrings()
@@ -49,6 +49,20 @@ func main() {
 	fo, err := os.Create("tiger_ir.txt")
 	if err != nil {
 		log.Fatalf("cannot create file %v", err)
+	}
+
+	fo.WriteString(strBuilder.String())
+
+	fo, err = os.Create("frags.txt")
+	if err != nil {
+		log.Fatalf("cannot create file %v", err)
+	}
+
+	strBuilder.Reset()
+	for _, frag := range frags {
+		if f, ok := frag.(*ProcFrag); ok {
+			f.body.printStm(&strBuilder, 0)
+		}
 	}
 
 	fo.WriteString(strBuilder.String())

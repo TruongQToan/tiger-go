@@ -182,13 +182,13 @@ func (s *Semant) transExp(level *Level, exp Exp, breakLabel Label) (TransExp, Se
 					return nil, nil, mismatchTypeErr(&IntSemantTy{}, rightTy, pos)
 				}
 
-				return s.translate.RelOp(Eq, le, re), &IntSemantTy{}, nil
+				return s.translate.RelOp(v.op, le, re), &IntSemantTy{}, nil
 			case *StringSemantTy:
 				if !isString(rightTy) {
 					return nil, nil, mismatchTypeErr(&StringSemantTy{}, rightTy, pos)
 				}
 
-				return s.translate.RelOp(Eq, le, re), &IntSemantTy{}, nil
+				return s.translate.RelOp(v.op, le, re), &IntSemantTy{}, nil
 			case *RecordSemantTy:
 				if !isRecord(rightTy) {
 					if _, ok := rightTy.(*NilSemantTy); !ok {
@@ -196,7 +196,7 @@ func (s *Semant) transExp(level *Level, exp Exp, breakLabel Label) (TransExp, Se
 					}
 				}
 
-				return s.translate.RelOp(Eq, le, re), &IntSemantTy{}, nil
+				return s.translate.RelOp(v.op, le, re), &IntSemantTy{}, nil
 			case *ArrSemantTy:
 				switch v2 := rightTy.(type) {
 				case *ArrSemantTy:
@@ -204,12 +204,12 @@ func (s *Semant) transExp(level *Level, exp Exp, breakLabel Label) (TransExp, Se
 						return nil, nil, mismatchTypeErr(leftTy, rightTy, pos)
 					}
 
-					return s.translate.RelOp(Eq, le, re), &IntSemantTy{}, nil
+					return s.translate.RelOp(v.op, le, re), &IntSemantTy{}, nil
 				default:
-					return s.translate.RelOp(Eq, le, re), nil, mismatchTypeErr(leftTy, rightTy, pos)
+					return s.translate.RelOp(v.op, le, re), nil, mismatchTypeErr(leftTy, rightTy, pos)
 				}
 			default:
-				return s.translate.RelOp(Eq, le, re), nil, fmt.Errorf("expect type int, string, record, arr; found %s", leftTy.TypeName())
+				return s.translate.RelOp(v.op, le, re), nil, fmt.Errorf("expect type int, string, record, arr; found %s", leftTy.TypeName())
 			}
 		}
 
@@ -223,7 +223,7 @@ func (s *Semant) transExp(level *Level, exp Exp, breakLabel Label) (TransExp, Se
 				return s.translate.RelOp(v.op, le, re), &IntSemantTy{}, nil
 			case *StringSemantTy:
 				if !isString(rightTy) {
-					return s.translate.RelOp(v.op, le, re), nil, mismatchTypeErr(&StringSemantTy{}, rightTy, pos)
+					return nil, nil, mismatchTypeErr(&StringSemantTy{}, rightTy, pos)
 				}
 
 				return s.translate.RelOp(v.op, le, re), &IntSemantTy{}, nil
@@ -465,10 +465,10 @@ func (s *Semant) transExp(level *Level, exp Exp, breakLabel Label) (TransExp, Se
 		}
 
 		if _, ok := fEntry.result.(*NilSemantTy); ok {
-			return s.translate.call(level, fEntry.level, fEntry.label, args, true), fEntry.result, nil
+			return s.translate.call(level, fEntry.level.parent, fEntry.label, args, true), fEntry.result, nil
 		}
 
-		return s.translate.call(level, fEntry.level, fEntry.label, args, false), fEntry.result, nil
+		return s.translate.call(level, fEntry.level.parent, fEntry.label, args, false), fEntry.result, nil
 
 	case *BreakExp:
 		return s.translate.breakStm(breakLabel), &UnitSemantTy{}, nil
@@ -584,7 +584,8 @@ func (s *Semant) transDec(level *Level, decl Declaration, pass int, breakLabel L
 			}
 		}
 
-		es := make([]bool, 0, len(v.params))
+		es := make([]bool, 0, 1 + len(v.params))
+		es = append(es, true)
 		for _, p := range v.params {
 			es = append(es, *p.escape)
 		}
@@ -601,6 +602,14 @@ func (s *Semant) transDec(level *Level, decl Declaration, pass int, breakLabel L
 			return nil, nil
 		}
 
+		accesses := s.translate.Formals(newLevel)
+		for i, param := range v.params {
+			tmp, _ := s.venv.Look(param.name)
+			oldEntry := tmp.(*VarEntry)
+			oldEntry.access = accesses[i]
+			s.venv.Replace(param.name, oldEntry)
+		}
+
 		bodyExp, bTy, err := s.transExp(newLevel, v.body, breakLabel)
 		if err != nil {
 			return nil, err
@@ -610,21 +619,13 @@ func (s *Semant) transDec(level *Level, decl Declaration, pass int, breakLabel L
 			return nil, mismatchTypeErr(resultTy, bTy, v.body.ExpPos())
 		}
 
-		accesses := s.translate.Formals(newLevel)
-		for i, param := range v.params {
-			oldEntry, _ := s.venv.Look(param.name)
-			oldEntry1 := oldEntry.(*VarEntry)
-			oldEntry1.access = accesses[i]
-			s.venv.Replace(param.name, oldEntry1)
-		}
-
-		s.venv.Replace(v.name, &FunEntry{
-			formals: paramsTy,
-			result:  resultTy,
-			label:   Label(v.name),
-			level:   newLevel,
-		})
-
+		//s.venv.Replace(v.name, &FunEntry{
+		//	formals: paramsTy,
+		//	result:  resultTy,
+		//	label:   Label(v.name),
+		//	level:   newLevel,
+		//})
+		//
 		ProcEntryExit(newLevel, bodyExp)
 		return nil, nil
 
@@ -633,9 +634,6 @@ func (s *Semant) transDec(level *Level, decl Declaration, pass int, breakLabel L
 		if err != nil {
 			return nil, err
 		}
-
-		acc := s.translate.AllocLocal(level, *v.escape)
-		varExp := s.translate.simpleVar(level, acc)
 
 		initTy, err = s.actualTy(initTy, v.init.ExpPos())
 		if err != nil {
@@ -649,6 +647,7 @@ func (s *Semant) transDec(level *Level, decl Declaration, pass int, breakLabel L
 				return nil, fmt.Errorf("cannot use nil here")
 			default:
 				acc := s.translate.AllocLocal(level, *v.escape)
+				varExp := s.translate.simpleVar(level, acc)
 				s.venv.Enter(v.name, &VarEntry{
 					ty:     initTy,
 					access: acc,
@@ -680,6 +679,8 @@ func (s *Semant) transDec(level *Level, decl Declaration, pass int, breakLabel L
 			return nil, typeMismatchWhenDeclErr(actualTy, initTy, v.init.ExpPos())
 		}
 
+		acc := s.translate.AllocLocal(level, *v.escape)
+		varExp := s.translate.simpleVar(level, acc)
 		s.venv.Enter(v.name, &VarEntry{
 			ty:     actualTy,
 			access: acc,

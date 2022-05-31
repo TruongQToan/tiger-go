@@ -35,6 +35,25 @@ const (
 	UgeIr
 )
 
+func (r RelOpIr) repr() string {
+	switch r {
+	case EqIr:
+		return "eq"
+	case NeIr:
+		return "ne"
+	case LtIr:
+		return "lt"
+	case GtIr:
+		return "gt"
+	case LeIr:
+		return "le"
+	case GeIr:
+		return "ge"
+	}
+
+	return ""
+}
+
 type ExpIr interface {
 	printExpIr(sb *strings.Builder, level int)
 }
@@ -57,7 +76,7 @@ type NameExpIr struct {
 
 func (e *NameExpIr) printExpIr(sb *strings.Builder, level int) {
 	indent(sb, level)
-	sb.WriteString("Name")
+	sb.WriteString("NameExp\n")
 	indent(sb, level+1)
 	sb.WriteString(strs.Get(Symbol(e.label)) + "\n")
 }
@@ -120,7 +139,7 @@ func (e *CallExpIr) printExpIr(sb *strings.Builder, level int) {
 	indent(sb, level)
 	sb.WriteString("Call\n")
 	indent(sb, level+1)
-	sb.WriteString("Name\n")
+	sb.WriteString("FuncName\n")
 	e.exp.printExpIr(sb, level+2)
 	indent(sb, level+1)
 	sb.WriteString("Arguments\n")
@@ -158,9 +177,10 @@ func (s *MoveStmIr) printStm(sb *strings.Builder, level int) {
 	indent(sb, level)
 	sb.WriteString("Move\n")
 	indent(sb, level+1)
-	sb.WriteString("Dest\n")
-	s.dst.printExpIr(sb, level+2)
 	sb.WriteString("Src\n")
+	s.src.printExpIr(sb, level+2)
+	indent(sb, level+1)
+	sb.WriteString("Dest\n")
 	s.dst.printExpIr(sb, level+2)
 }
 
@@ -197,15 +217,20 @@ func (s *CJumpStmIr) printStm(sb *strings.Builder, level int) {
 	indent(sb, level)
 	sb.WriteString("CJump\n")
 	indent(sb, level+1)
+	sb.WriteString("Op\n")
+	indent(sb, level+2)
+	sb.WriteString(s.relop.repr() + "\n")
+	indent(sb, level+1)
 	sb.WriteString("Left\n")
 	s.left.printExpIr(sb, level+2)
 	indent(sb, level+1)
 	sb.WriteString("Right\n")
-	s.left.printExpIr(sb, level+2)
+	s.right.printExpIr(sb, level+2)
 	indent(sb, level+1)
 	sb.WriteString("True Label\n")
 	indent(sb, level+2)
 	sb.WriteString(strs.Get(Symbol(s.trueLabel)) + "\n")
+	indent(sb, level+1)
 	sb.WriteString("False Label\n")
 	indent(sb, level+2)
 	sb.WriteString(strs.Get(Symbol(s.falseLabel)) + "\n")

@@ -50,7 +50,7 @@ func (a *InRegMipsAccess) exp(_ ExpIr) ExpIr {
 type MipsFrame struct {
 	name       Label
 	accesses   []FrameAccess
-	shipInstrs *SeqStmIr
+	shiftInsts *SeqStmIr
 	locals     int32
 }
 
@@ -72,6 +72,7 @@ func (f *MipsFrame) createAccesses(i int32, escapes []bool) {
 	if int(i) >= len(argRegs) {
 		f.accesses = append(f.accesses, &InFrameMipsAccess{offset: i * wordSize})
 		f.createAccesses(i+1, escapes)
+		return
 	}
 
 	var acc FrameAccess
@@ -83,13 +84,15 @@ func (f *MipsFrame) createAccesses(i int32, escapes []bool) {
 	}
 
 	f.accesses = append(f.accesses, acc)
-
-	f.shipInstrs = &SeqStmIr{
-		first: &MoveStmIr{
+	f.shiftInsts = &SeqStmIr{
+		first: f.shiftInsts,
+		second: &MoveStmIr{
 			dst: acc.exp(&TempExpIr{fp}),
 			src: &TempExpIr{temp: argRegs[i]},
 		},
 	}
+
+	f.createAccesses(i+1, escapes)
 }
 
 func (f *MipsFrame) Name() Label {
@@ -118,19 +121,25 @@ func (f *MipsFrame) StringFrag(label Label, str string) string {
 	sb.WriteString("\n\t.ascii\t\"")
 	for _, c := range str {
 		switch c {
-		case '\n': sb.WriteString("\\n")
-		case '\t': sb.WriteString("\\t")
-		case '0': sb.WriteString("\\0")
-		case '"': sb.WriteString("\\\"")
-		case '\'': sb.WriteString("\\'")
-		case '\\': sb.WriteString("\\\\")
+		case '\n':
+			sb.WriteString("\\n")
+		case '\t':
+			sb.WriteString("\\t")
+		case '0':
+			sb.WriteString("\\0")
+		case '"':
+			sb.WriteString("\\\"")
+		case '\'':
+			sb.WriteString("\\'")
+		case '\\':
+			sb.WriteString("\\\\")
 		default:
 			if c >= ' ' || c < 127 {
 				sb.WriteByte(byte(c))
 			} else {
 				sb.WriteByte('\\')
-				sb.WriteByte('0' + (byte(c)>>6))
-				sb.WriteByte('0' + ((byte(c)>>3) & 8))
+				sb.WriteByte('0' + (byte(c) >> 6))
+				sb.WriteByte('0' + ((byte(c) >> 3) & 8))
 				sb.WriteByte('0' + (byte(c) & 8))
 			}
 		}
