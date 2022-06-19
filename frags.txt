@@ -1,32 +1,39 @@
 
 Procedure Frag
-g
+main
 Move
   Src
-    Mem
-      Plus
-        Left
-          Temp
-            t5
-        Right
-          Const
-            4
+    EsEq
+      Stm
+        Move
+          Src
+            Call
+              FuncName
+                NameExp
+                  initArray
+              Arguments
+                Const
+                  10
+                Const
+                  0
+          Dest
+            Mem
+              Plus
+                Left
+                  Temp
+                    t28
+                Right
+                  Const
+                    -4
+      Exp
+        Mem
+          Plus
+            Left
+              Temp
+                t28
+            Right
+              Const
+                -4
   Dest
     Temp
-      t6
-
-Procedure Frag
-g
-Move
-  Src
-    Mem
-      Plus
-        Left
-          Temp
-            t5
-        Right
-          Const
-            4
-  Dest
-    Temp
-      t6
+      t2

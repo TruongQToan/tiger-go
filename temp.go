@@ -41,3 +41,4 @@ func (t *TempManagement) LabelString(label Label) string {
 func (t *TempManagement) NamedLabel(s string) Label {
 	return Label(strs.Symbol(s))
 }
+

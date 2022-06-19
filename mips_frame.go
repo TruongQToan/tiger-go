@@ -10,21 +10,127 @@ const (
 )
 
 var (
-	argRegs = []Temp{a0, a1, a2, a3}
-)
+	zero = tm.NewTemp() // $0
 
-var (
+	// expression evaluation and results of a function
+	v0 = tm.NewTemp() // $2
+	v1 = tm.NewTemp() // $3
+
 	// function arguments registers
-	a0 = tm.NewTemp()
-	a1 = tm.NewTemp()
-	a2 = tm.NewTemp()
-	a3 = tm.NewTemp()
+	a0 = tm.NewTemp() // $4
+	a1 = tm.NewTemp() // $5
+	a2 = tm.NewTemp() // $6
+	a3 = tm.NewTemp() // $7
 
-	fp = tm.NewTemp()
+	// temporaries - not preserved across call
+	t0 = tm.NewTemp() // $8
+	t1 = tm.NewTemp() // $9
+	t2 = tm.NewTemp() // $10
+	t3 = tm.NewTemp() // $11
+	t4 = tm.NewTemp() // $12
+	t5 = tm.NewTemp() // $13
+	t6 = tm.NewTemp() // $14
+	t7 = tm.NewTemp() // $15
 
-	// return value register
-	rv = tm.NewTemp()
+	// save values - preserved across calls
+	s0 = tm.NewTemp() // $16
+	s1 = tm.NewTemp() // $17
+	s2 = tm.NewTemp() // $18
+	s3 = tm.NewTemp() // $19
+	s4 = tm.NewTemp() // $20
+	s5 = tm.NewTemp() // $21
+	s6 = tm.NewTemp() // $22
+	s7 = tm.NewTemp() // $23
+
+	// temporaries - not preserved across call
+	t8 = tm.NewTemp() // $24
+	t9 = tm.NewTemp() // $25
+
+	// pointer to the global area
+	gp = tm.NewTemp() // $28
+
+	// stack pointer
+	sp = tm.NewTemp() // $29
+
+	// frame pointer
+	fp = tm.NewTemp() // $30
+
+	// return address
+	ra = tm.NewTemp() // $31
+	rv = v0
+
+	specialArgs = []Temp{rv, fp, sp, ra}
+
+	// registers to save arguments
+	argRegs = []Temp{a0, a1, a2, a3}
+
+	// callee-saved registers
+	calleeSaves = []Temp{s0, s1, s2, s3, s4, s5, s6, s7}
+
+	// caller-saved registers
+	callerSaves = []Temp{t0, t1, t2, t3, t4, t5, t6, t7, t8, t9}
+
+	registers = map[string]Temp{
+		"$a0": a0,
+		"$a1": a1,
+		"$a2": a2,
+		"$a3": a3,
+		"$t0": t0,
+		"$t1": t1,
+		"$t2": t2,
+		"$t3": t3,
+		"$t4": t4,
+		"$t5": t5,
+		"$t6": t6,
+		"$t7": t7,
+		"$s1": s1,
+		"$s2": s2,
+		"$s3": s3,
+		"$s4": s4,
+		"$s5": s5,
+		"$s6": s6,
+		"$s7": s7,
+		"$fp": fp,
+		"$v0": rv,
+		"$sp": sp,
+		"$ra": ra,
+	}
+
+	tempMap = map[Temp]string{
+		a0: "$a0",
+		a1: "$a1",
+		a2: "$a2",
+		a3: "$a3",
+		t0: "$t0",
+		t1: "$t1",
+		t2: "$t2",
+		t3: "$t3",
+		t4: "$t4",
+		t5: "$t5",
+		t6: "$t6",
+		t7: "$t7",
+		s1: "$s1",
+		s2: "$s2",
+		s3: "$s3",
+		s4: "$s4",
+		s5: "$s5",
+		s6: "$s6",
+		s7: "$s7",
+		fp: "$fp",
+		v0: "$rv",
+		sp: "$sp",
+		ra: "$ra",
+	}
 )
+
+func tempName(t Temp) string {
+	v, ok := tempMap[t]
+	if ok {
+		return v
+	}
+
+	return tm.MakeTempString(t)
+}
 
 type InFrameMipsAccess struct {
 	offset int32
@@ -61,6 +167,10 @@ func NewMipsFrame(name Label, escapes []bool) Frame {
 
 	frame.createAccesses(0, escapes)
 	return &frame
+}
+
+func (f *MipsFrame) TempMap(t Temp) string {
+	return tempName(t)
 }
 
 func (f *MipsFrame) createAccesses(i int32, escapes []bool) {

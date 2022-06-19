@@ -9,6 +9,7 @@ type Frame interface {
 	Formals() []FrameAccess
 	AllocLocal(escape bool) FrameAccess
 	StringFrag(label Label, str string) string
+	TempMap(t Temp) string
 }
 
 type FrameFactoryFunc func(name Label, formals []bool) Frame

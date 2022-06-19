@@ -37,6 +37,8 @@ func (s *Semant) TransProg(exp Exp) (TransExp, error) {
 		return nil, err
 	}
 
+	ProcEntryExit(&mainLevel, progExp)
+
 	fmt.Printf("Parse type %s\n", ty.TypeName())
 	return progExp, nil
 }

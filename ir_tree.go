@@ -12,12 +12,6 @@ const (
 	MinusIr
 	MulIr
 	DivIr
-	AndIr
-	OrIr
-	LshiftIr
-	RshiftIr
-	ArshiftIr
-	Xor
 )
 
 type RelOpIr int
@@ -29,11 +23,26 @@ const (
 	GtIr
 	LeIr
 	GeIr
-	UltIr
-	UleIr
-	UgtIr
-	UgeIr
 )
+
+func (r RelOpIr) not() RelOpIr {
+	switch r {
+	case EqIr:
+		return NeIr
+	case NeIr:
+		return EqIr
+	case LtIr:
+		return GeIr
+	case GtIr:
+		return LeIr
+	case LeIr:
+		return GtIr
+	case GeIr:
+		return LtIr
+	}
+
+	panic("unimplemented operator")
+}
 
 func (r RelOpIr) repr() string {
 	switch r {
@@ -51,7 +60,7 @@ func (r RelOpIr) repr() string {
 		return "ge"
 	}
 
-	return ""
+	panic("unimplemented operator")
 }
 
 type ExpIr interface {
