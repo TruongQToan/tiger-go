@@ -5,35 +5,63 @@ Move
   Src
     EsEq
       Stm
-        Move
-          Src
-            Call
-              FuncName
-                NameExp
-                  initArray
-              Arguments
+        SeqStm
+          First
+            CJump
+              Op
+                gt
+              Left
                 Const
                   10
+              Right
                 Const
-                  0
-          Dest
-            Mem
-              Plus
-                Left
-                  Temp
-                    t28
-                Right
-                  Const
-                    -4
+                  20
+              True Label
+                L32
+              False Label
+                L33
+          Second
+            SeqStm
+              First
+                Label
+                  L32
+              Second
+                SeqStm
+                  First
+                    Move
+                      Src
+                        Const
+                          30
+                      Dest
+                        Temp
+                          t31
+                  Second
+                    SeqStm
+                      First
+                        Jump
+                          NameExp
+                            L34
+                      Second
+                        SeqStm
+                          First
+                            Label
+                              L33
+                          Second
+                            SeqStm
+                              First
+                                Move
+                                  Src
+                                    Const
+                                      40
+                                  Dest
+                                    Temp
+                                      t31
+                              Second
+                                Label
+                                  L34
       Exp
-        Mem
-          Plus
-            Left
-              Temp
-                t28
-            Right
-              Const
-                -4
+        Temp
+          t31
   Dest
     Temp
       t2

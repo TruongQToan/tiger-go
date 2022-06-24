@@ -617,7 +617,7 @@ func (t *Translate) seqStm(stms ...StmIr) StmIr {
 }
 
 func ProcEntryExit(level *Level, body TransExp) {
-	body1 := ProcEntryExit1(level.frame.(*MipsFrame), &MoveStmIr{
+	body1 := level.frame.ProcEntryExit1(&MoveStmIr{
 		dst: &TempExpIr{rv},
 		src: body.unEx(),
 	})

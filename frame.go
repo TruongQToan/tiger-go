@@ -10,6 +10,8 @@ type Frame interface {
 	AllocLocal(escape bool) FrameAccess
 	StringFrag(label Label, str string) string
 	TempMap(t Temp) string
+	ProcEntryExit1(body StmIr) StmIr
+	ProcEntryExit2(body []Instr) []Instr
 }
 
 type FrameFactoryFunc func(name Label, formals []bool) Frame

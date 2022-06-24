@@ -125,48 +125,6 @@ func (vst *VarST) Name(sym Symbol) string {
 	return vst.st.Name(sym)
 }
 
-type StmBlockST struct {
-	st *BaseST
-}
-
-func NewStmBlockST() *StmBlockST {
-	return &StmBlockST{st: NewST()}
-}
-
-func (vst *StmBlockST) BeginScope() {
-	vst.st.BeginScope()
-}
-
-func (vst *StmBlockST) EndScope() {
-	vst.st.EndScope()
-}
-
-func (vst *StmBlockST) Enter(sym Symbol, data []StmIr) {
-	vst.st.Enter(sym, data)
-}
-
-func (vst *StmBlockST) Look(sym Symbol) ([]StmIr, error) {
-	v, err := vst.st.Look(sym)
-	if err != nil {
-		return nil, err
-	}
-
-	v1, ok := v.([]StmIr)
-	if !ok {
-		panic("expect semant type in variable ST")
-	}
-
-	return v1, nil
-}
-
-func (vst *StmBlockST) Replace(sym Symbol, data []StmIr) {
-	vst.st.Replace(sym, data)
-}
-
-func (vst *StmBlockST) Name(sym Symbol) string {
-	return vst.st.Name(sym)
-}
-
 type TypeST struct {
 	st *BaseST
 }

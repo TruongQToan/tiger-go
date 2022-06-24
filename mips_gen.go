@@ -1,6 +1,10 @@
 package main
 
-import "strconv"
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
 
 type CodeGenerator struct {
 	instructions []Instr
@@ -179,108 +183,12 @@ func (c *CodeGenerator) munchStm(s StmIr) {
 		}
 
 	case *CJumpStmIr:
-		switch v1 := v.right.(type) {
-		case *ConstExpIr:
-			if v1.c == 0 {
-				switch v.relop {
-				case EqIr:
-					instr := &OperInstr{
-						assem: "beqz `s0, `j0\nb `j1",
-						src:   []Temp{c.munchExp(v.left)},
-						jumps: []Label{v.trueLabel, v.falseLabel},
-					}
-
-					c.instructions = append(c.instructions, instr)
-
-				case NeIr:
-					instr := &OperInstr{
-						assem: "bnez `s0, `j0\nb `j1",
-						src:   []Temp{c.munchExp(v.left)},
-						jumps: []Label{v.trueLabel, v.falseLabel},
-					}
-
-					c.instructions = append(c.instructions, instr)
-
-				case GeIr:
-					instr := &OperInstr{
-						assem: "bgez `s0, `j0\nb `j1",
-						src:   []Temp{c.munchExp(v.left)},
-						jumps: []Label{v.trueLabel, v.falseLabel},
-					}
-
-					c.instructions = append(c.instructions, instr)
-
-				case GtIr:
-					instr := &OperInstr{
-						assem: "bgtz `s0, `j0\nb `j1",
-						src:   []Temp{c.munchExp(v.left)},
-						jumps: []Label{v.trueLabel, v.falseLabel},
-					}
-
-					c.instructions = append(c.instructions, instr)
-
-				case LtIr:
-					instr := &OperInstr{
-						assem: "bltz `s0, `j0\nb `j1",
-						src:   []Temp{c.munchExp(v.left)},
-						jumps: []Label{v.trueLabel, v.falseLabel},
-					}
-
-					c.instructions = append(c.instructions, instr)
-
-				case LeIr:
-					instr := &OperInstr{
-						assem: "blez `s0, `j0\nb `j1",
-						src:   []Temp{c.munchExp(v.left)},
-						jumps: []Label{v.trueLabel, v.falseLabel},
-					}
-
-					c.instructions = append(c.instructions, instr)
-				}
-			}
-
-		default:
+		if v1, ok := v.right.(*ConstExpIr); ok && v1.c == 0 {
 			switch v.relop {
-			case LeIr:
-				instr := &OperInstr{
-					assem: "ble `s0, `s1, `j0\nb `j1",
-					src:   []Temp{c.munchExp(v.left), c.munchExp(v.right)},
-					jumps: []Label{v.trueLabel, v.falseLabel},
-				}
-
-				c.instructions = append(c.instructions, instr)
-
-			case LtIr:
-				instr := &OperInstr{
-					assem: "blt `s0, `s1, `j0\nb `j1",
-					src:   []Temp{c.munchExp(v.left), c.munchExp(v.right)},
-					jumps: []Label{v.trueLabel, v.falseLabel},
-				}
-
-				c.instructions = append(c.instructions, instr)
-
-			case GeIr:
-				instr := &OperInstr{
-					assem: "bge `s0, `s1, `j0\nb `j1",
-					src:   []Temp{c.munchExp(v.left), c.munchExp(v.right)},
-					jumps: []Label{v.trueLabel, v.falseLabel},
-				}
-
-				c.instructions = append(c.instructions, instr)
-
-			case GtIr:
-				instr := &OperInstr{
-					assem: "bgt `s0, `s1, `j0\nb `j1",
-					src:   []Temp{c.munchExp(v.left), c.munchExp(v.right)},
-					jumps: []Label{v.trueLabel, v.falseLabel},
-				}
-
-				c.instructions = append(c.instructions, instr)
-
 			case EqIr:
 				instr := &OperInstr{
-					assem: "beq `s0, `s1, `j0\nb `j1",
-					src:   []Temp{c.munchExp(v.left), c.munchExp(v.right)},
+					assem: "beqz `s0, `j0\nb `j1",
+					src:   []Temp{c.munchExp(v.left)},
 					jumps: []Label{v.trueLabel, v.falseLabel},
 				}
 
@@ -288,17 +196,110 @@ func (c *CodeGenerator) munchStm(s StmIr) {
 
 			case NeIr:
 				instr := &OperInstr{
-					assem: "bne `s0, `s1, `j0\nb `j1",
-					src:   []Temp{c.munchExp(v.left), c.munchExp(v.right)},
+					assem: "bnez `s0, `j0\nb `j1",
+					src:   []Temp{c.munchExp(v.left)},
 					jumps: []Label{v.trueLabel, v.falseLabel},
 				}
 
 				c.instructions = append(c.instructions, instr)
 
-			default:
-				panic("invalid binary operator")
+			case GeIr:
+				instr := &OperInstr{
+					assem: "bgez `s0, `j0\nb `j1",
+					src:   []Temp{c.munchExp(v.left)},
+					jumps: []Label{v.trueLabel, v.falseLabel},
+				}
+
+				c.instructions = append(c.instructions, instr)
+
+			case GtIr:
+				instr := &OperInstr{
+					assem: "bgtz `s0, `j0\nb `j1",
+					src:   []Temp{c.munchExp(v.left)},
+					jumps: []Label{v.trueLabel, v.falseLabel},
+				}
+
+				c.instructions = append(c.instructions, instr)
+
+			case LtIr:
+				instr := &OperInstr{
+					assem: "bltz `s0, `j0\nb `j1",
+					src:   []Temp{c.munchExp(v.left)},
+					jumps: []Label{v.trueLabel, v.falseLabel},
+				}
+
+				c.instructions = append(c.instructions, instr)
+
+			case LeIr:
+				instr := &OperInstr{
+					assem: "blez `s0, `j0\nb `j1",
+					src:   []Temp{c.munchExp(v.left)},
+					jumps: []Label{v.trueLabel, v.falseLabel},
+				}
+
+				c.instructions = append(c.instructions, instr)
 			}
 
+			return
+		}
+
+		switch v.relop {
+		case LeIr:
+			instr := &OperInstr{
+				assem: "ble `s0, `s1, `j0\nb `j1",
+				src:   []Temp{c.munchExp(v.left), c.munchExp(v.right)},
+				jumps: []Label{v.trueLabel, v.falseLabel},
+			}
+
+			c.instructions = append(c.instructions, instr)
+
+		case LtIr:
+			instr := &OperInstr{
+				assem: "blt `s0, `s1, `j0\nb `j1",
+				src:   []Temp{c.munchExp(v.left), c.munchExp(v.right)},
+				jumps: []Label{v.trueLabel, v.falseLabel},
+			}
+
+			c.instructions = append(c.instructions, instr)
+
+		case GeIr:
+			instr := &OperInstr{
+				assem: "bge `s0, `s1, `j0\nb `j1",
+				src:   []Temp{c.munchExp(v.left), c.munchExp(v.right)},
+				jumps: []Label{v.trueLabel, v.falseLabel},
+			}
+
+			c.instructions = append(c.instructions, instr)
+
+		case GtIr:
+			instr := &OperInstr{
+				assem: "bgt `s0, `s1, `j0\nb `j1",
+				src:   []Temp{c.munchExp(v.left), c.munchExp(v.right)},
+				jumps: []Label{v.trueLabel, v.falseLabel},
+			}
+
+			c.instructions = append(c.instructions, instr)
+
+		case EqIr:
+			instr := &OperInstr{
+				assem: "beq `s0, `s1, `j0\nb `j1",
+				src:   []Temp{c.munchExp(v.left), c.munchExp(v.right)},
+				jumps: []Label{v.trueLabel, v.falseLabel},
+			}
+
+			c.instructions = append(c.instructions, instr)
+
+		case NeIr:
+			instr := &OperInstr{
+				assem: "bne `s0, `s1, `j0\nb `j1",
+				src:   []Temp{c.munchExp(v.left), c.munchExp(v.right)},
+				jumps: []Label{v.trueLabel, v.falseLabel},
+			}
+
+			c.instructions = append(c.instructions, instr)
+
+		default:
+			panic("invalid binary operator")
 		}
 
 	case *ExpStmIr:
@@ -474,6 +475,14 @@ func (c *CodeGenerator) munchExp(exp ExpIr) Temp {
 	case *TempExpIr:
 		return t.temp
 
+	case *ConstExpIr:
+		return c.gen(func(temp Temp) {
+			c.instructions = append(c.instructions, &OperInstr{
+				assem: fmt.Sprintf("li `d0, %d", t.c),
+				dst:   []Temp{temp},
+			})
+		})
+
 	case *NameExpIr:
 		return c.gen(func(temp Temp) {
 			c.instructions = append(c.instructions, &OperInstr{
@@ -483,7 +492,9 @@ func (c *CodeGenerator) munchExp(exp ExpIr) Temp {
 		})
 	}
 
-	panic("invalid IR exp")
+	sb := strings.Builder{}
+	exp.printExpIr(&sb, 0)
+	panic("invalid IR exp " + sb.String())
 }
 
 func (c *CodeGenerator) buildArgs(argsRegisters []Temp, args []ExpIr) []Temp {

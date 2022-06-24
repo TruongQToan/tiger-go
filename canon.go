@@ -2,14 +2,16 @@ package main
 
 type Canon struct{}
 
+type blockTable = map[Label][]StmIr
+
 // TraceSchedule is basically a dfs-like algorithm
 func (c *Canon) TraceSchedule(blocks [][]StmIr, done Label) []StmIr {
 	// Add all the blocks to a table
-	table := NewStmBlockST()
+	table := make(blockTable)
 	for _, block := range blocks {
 		if len(block) > 0 {
 			if v, ok := block[0].(*LabelStmIr); ok {
-				table.Enter(Symbol(v.label), block)
+				table[v.label] = block
 			}
 		}
 	}
@@ -17,14 +19,14 @@ func (c *Canon) TraceSchedule(blocks [][]StmIr, done Label) []StmIr {
 	return append(c.getNextTrace(table, blocks), &LabelStmIr{done})
 }
 
-func (c *Canon) getNextTrace(table *StmBlockST, blocks [][]StmIr) []StmIr {
+func (c *Canon) getNextTrace(table blockTable, blocks [][]StmIr) []StmIr {
 	if len(blocks) == 0 {
 		return nil
 	}
 
 	if len(blocks[0]) > 0 {
 		if v, ok := blocks[0][0].(*LabelStmIr); ok {
-			if _, err := table.Look(Symbol(v.label)); err == nil {
+			if _, ok := table[v.label]; ok {
 				return c.trace(table, blocks[0], blocks[1:])
 			}
 		}
@@ -33,7 +35,7 @@ func (c *Canon) getNextTrace(table *StmBlockST, blocks [][]StmIr) []StmIr {
 	return c.getNextTrace(table, blocks[1:])
 }
 
-func (c *Canon) trace(table *StmBlockST, block []StmIr, rest [][]StmIr) []StmIr {
+func (c *Canon) trace(table blockTable, block []StmIr, rest [][]StmIr) []StmIr {
 	// Mark label visited
 	if len(block) == 0 {
 		panic("cannot have empty block")
@@ -42,11 +44,11 @@ func (c *Canon) trace(table *StmBlockST, block []StmIr, rest [][]StmIr) []StmIr 
 	if v, ok := block[0].(*LabelStmIr); !ok {
 		panic("head of the block must be a label")
 	} else {
-		table.Replace(Symbol(v.label), nil)
+		delete(table, v.label)
 		switch v1 := block[len(block)-1].(type) {
 		case *JumpStmIr:
 			if _, ok := v1.exp.(*NameExpIr); ok {
-				if v, err := table.Look(Symbol(v1.labels[0])); err == nil {
+				if v, ok := table[v1.labels[0]]; ok {
 					return append(block[:len(block)-1], c.trace(table, v, rest)...)
 				}
 
@@ -56,9 +58,11 @@ func (c *Canon) trace(table *StmBlockST, block []StmIr, rest [][]StmIr) []StmIr 
 			return append(block, c.getNextTrace(table, rest)...)
 
 		case *CJumpStmIr:
-			if v, err := table.Look(Symbol(v1.falseLabel)); err == nil {
+			if v, ok := table[v1.falseLabel]; ok {
 				return append(block, c.trace(table, v, rest)...)
-			} else if v, err := table.Look(Symbol(v1.trueLabel)); err == nil {
+			}
+
+			if v, ok := table[v1.trueLabel]; ok {
 				return append(block[:len(block)-1], append([]StmIr{&CJumpStmIr{
 					relop:      v1.relop.not(),
 					left:       v1.left,
@@ -66,33 +70,27 @@ func (c *Canon) trace(table *StmBlockST, block []StmIr, rest [][]StmIr) []StmIr 
 					trueLabel:  v1.falseLabel,
 					falseLabel: v1.trueLabel,
 				}}, c.trace(table, v, rest)...)...)
-			} else {
-				f := tm.NewLabel()
-				return append(block[:len(block)-1], append([]StmIr{
-					&CJumpStmIr{
-						relop:      v1.relop,
-						left:       v1.left,
-						right:      v1.right,
-						trueLabel:  v1.trueLabel,
-						falseLabel: f,
-					},
-					&LabelStmIr{f},
-					&JumpStmIr{
-						exp:    &NameExpIr{f},
-						labels: []Label{f},
-					},
-				}, c.getNextTrace(table, rest)...)...)
 			}
+
+			f := tm.NewLabel()
+			return append(block[:len(block)-1], append([]StmIr{
+				&CJumpStmIr{
+					relop:      v1.relop,
+					left:       v1.left,
+					right:      v1.right,
+					trueLabel:  v1.trueLabel,
+					falseLabel: f,
+				},
+				&LabelStmIr{f},
+				&JumpStmIr{
+					exp:    &NameExpIr{v1.falseLabel},
+					labels: []Label{v1.falseLabel},
+				},
+			}, c.getNextTrace(table, rest)...)...)
 		}
 	}
 
 	panic("cannot call trace on not jump statement")
-}
-
-func (c *Canon) enterBlock(table *StmBlockST, block []StmIr) {
-	if v, ok := block[0].(*LabelStmIr); ok {
-		table.Enter(Symbol(v.label), block)
-	}
 }
 
 func (c *Canon) BasicBlocks(stms []StmIr) ([][]StmIr, Label) {
@@ -127,10 +125,7 @@ func (c *Canon) nextBlock(stms []StmIr, thisBlock []StmIr, blocks *[][]StmIr, do
 	}
 
 	switch v := stms[0].(type) {
-	case *JumpStmIr:
-		c.endBlock(stms[1:], append(thisBlock, v), blocks, done)
-
-	case *CJumpStmIr:
+	case *JumpStmIr, *CJumpStmIr:
 		c.endBlock(stms[1:], append(thisBlock, v), blocks, done)
 
 	case *LabelStmIr:
@@ -140,6 +135,7 @@ func (c *Canon) nextBlock(stms []StmIr, thisBlock []StmIr, blocks *[][]StmIr, do
 				labels: []Label{v.label},
 			},
 		}, stms...), thisBlock, blocks, done)
+
 	default:
 		c.nextBlock(stms[1:], append(thisBlock, v), blocks, done)
 	}

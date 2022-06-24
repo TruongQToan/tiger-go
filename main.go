@@ -9,25 +9,26 @@ import (
 	"strings"
 )
 
-var fileName = flag.String("source", "./test_files/test1.tig", "source file to compile")
+var fileName = flag.String("source", "./test_files/test8.tig", "source file to compile")
 
 var (
 	strs = NewStrings()
 	tm = NewTempManagement()
 )
 
-func emitProc(codeGen *CodeGenerator, canon *Canon, fo *os.File, proc *ProcFrag) {
+func emitProc(canon *Canon, fo *os.File, proc *ProcFrag) {
 	stms, _ := canon.Linearize(proc.body)
 	blocks, doneLabel := canon.BasicBlocks(stms)
 	stms = canon.TraceSchedule(blocks, doneLabel)
 
 	instrs := make([]Instr, 0)
 	for _, stm := range stms {
+		codeGen := NewCodeGenerator()
 		instrs = append(instrs, codeGen.GenCode(stm)...)
 	}
 
 	for _, i := range instrs {
-		fo.WriteString(i.assemStr() + "\n")
+		fo.WriteString(formatAssem(i, proc.frame) + "\n")
 	}
 }
 
@@ -106,32 +107,43 @@ func main() {
 	strBuilder.Reset()
 	for _, frag := range frags {
 		if f, ok := frag.(*ProcFrag); ok {
-			_, linearized := canon.Linearize(f.body)
-			linearized.printStm(&strBuilder, 0)
-			//blocks, doneLabel := canon.BasicBlocks(stms)
-			//stms = canon.TraceSchedule(blocks, doneLabel)
+			stms, _ := canon.Linearize(f.body)
+
 			//for _, stm := range stms {
 			//	stm.printStm(&strBuilder, 0)
 			//}
+
+			blocks, done := canon.BasicBlocks(stms)
+			//for _, block := range blocks {
+			//	fmt.Println("done label", tm.LabelString(done))
+			//	for i, stm := range block {
+			//		fmt.Println("Statement ", i)
+			//		stm.printStm(&strBuilder, 0)
+			//	}
+			//}
+
+			stms = canon.TraceSchedule(blocks, done)
+			for _, stm := range stms {
+				stm.printStm(&strBuilder, 0)
+			}
 		}
 	}
 
 	fo.WriteString(strBuilder.String())
 
-	//fo, err = os.Create(*fileName + ".s")
-	//if err != nil {
-	//	log.Fatalf("cannot create file " + *fileName + ".s")
-	//}
-	//
-	//fo.WriteString("\t.global main\n")
-	//fo.WriteString("\t.data\n")
-	//for _, str := range strFrags {
-	//	fo.WriteString(tm.LabelString(str.label) + ": .asciiz \"" + str.str + "\"\n")
-	//}
-	//
-	//codeGen := NewCodeGenerator()
-	//fo.WriteString("\n\t.text\n")
-	//for _, proc := range procFrags {
-	//	emitProc(codeGen, canon, fo, proc)
-	//}
+	fo, err = os.Create(*fileName + ".s")
+	if err != nil {
+		log.Fatalf("cannot create file " + *fileName + ".s")
+	}
+
+	fo.WriteString("\t.global main\n")
+	fo.WriteString("\t.data\n")
+	for _, str := range strFrags {
+		fo.WriteString(tm.LabelString(str.label) + ": .asciiz \"" + str.str + "\"\n")
+	}
+
+	fo.WriteString("\n\t.text\n")
+	for _, proc := range procFrags {
+		emitProc(canon, fo, proc)
+	}
 }

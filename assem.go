@@ -81,11 +81,11 @@ func (m *MoveInstr) jumpLabels() []Label {
 
 // in assem, we may have something like "addi `d0, `s0, 3".
 // This function replaces `d0, `s0 with actual registers.
-func formatAssem(i Instr, frame Frame) {
+func formatAssem(i Instr, frame Frame) string {
 	sources, dests, jumpLabels := i.srcRegs(), i.dstRegs(), i.jumpLabels()
 	assem := i.assemStr()
 	sb := strings.Builder{}
-	for i := 0; i < len(assem); i++{
+	for i := 0; i < len(assem); i++ {
 		if assem[i] == '`' {
 			i++
 			switch assem[i] {
@@ -122,6 +122,10 @@ func formatAssem(i Instr, frame Frame) {
 			default:
 				sb.WriteByte(assem[i])
 			}
+		} else {
+			sb.WriteByte(assem[i])
 		}
 	}
+
+	return sb.String()
 }

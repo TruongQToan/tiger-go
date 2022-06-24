@@ -1,5 +1,3 @@
-Label
-  L36
 CJump
   Op
     gt
@@ -13,6 +11,18 @@ CJump
     L32
   False Label
     L33
+Label
+  L32
+Move
+  Src
+    Const
+      30
+  Dest
+    Temp
+      t31
+Jump
+  NameExp
+    L34
 Label
   L33
 Move
@@ -31,20 +41,3 @@ Move
   Dest
     Temp
       t2
-Jump
-  NameExp
-    L35
-Label
-  L32
-Move
-  Src
-    Const
-      30
-  Dest
-    Temp
-      t31
-Jump
-  NameExp
-    L34
-Label
-  L35

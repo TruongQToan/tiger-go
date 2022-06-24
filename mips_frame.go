@@ -109,6 +109,8 @@ var (
 		t5: "$t5",
 		t6: "$t6",
 		t7: "$t7",
+		t8: "$t8",
+		t9: "$t9",
 		s1: "$s1",
 		s2: "$s2",
 		s3: "$s3",
@@ -263,6 +265,12 @@ func (f *MipsFrame) StringFrag(label Label, str string) string {
 // 4. save "escaping" arguments (including static link) into the frame, move nonescaping arguments into fresh temporary registers.
 // 5. store instructions to save any calle-save registers - including the return address register - used within the function.
 // 8. load instructions to restore the calle-save registers
-func ProcEntryExit1(frame *MipsFrame, body StmIr) StmIr {
+func (f *MipsFrame) ProcEntryExit1(body StmIr) StmIr {
 	return body
+}
+
+func (f *MipsFrame) ProcEntryExit2(body []Instr) []Instr {
+	return append(body, &OperInstr{
+		src: append([]Temp{zero, ra, sp}, calleeSaves...),
+	})
 }
