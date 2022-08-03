@@ -9,7 +9,8 @@ type Frame interface {
 	Formals() []FrameAccess
 	AllocLocal(escape bool) FrameAccess
 	StringFrag(label Label, str string) string
-	TempMap(t Temp) string
+	TempName(t Temp) string
+	TempMap() map[Temp]string
 	ProcEntryExit1(body StmIr) StmIr
 	ProcEntryExit2(body []Instr) []Instr
 }

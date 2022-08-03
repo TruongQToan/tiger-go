@@ -171,7 +171,11 @@ func NewMipsFrame(name Label, escapes []bool) Frame {
 	return &frame
 }
 
-func (f *MipsFrame) TempMap(t Temp) string {
+func (f *MipsFrame) TempMap() map[Temp]string {
+	return tempMap
+}
+
+func (f *MipsFrame) TempName(t Temp) string {
 	return tempName(t)
 }
 

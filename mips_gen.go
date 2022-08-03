@@ -149,10 +149,10 @@ func (c *CodeGenerator) munchStm(s StmIr) {
 
 			// move register to register
 			default:
-				instr := &OperInstr{
+				instr := &MoveInstr{
 					assem: "move `d0, `s0",
-					dst:   []Temp{v1.temp},
-					src:   []Temp{c.munchExp(v.src)},
+					dst:   v1.temp,
+					src:   c.munchExp(v.src),
 				}
 
 				c.instructions = append(c.instructions, instr)

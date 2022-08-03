@@ -96,7 +96,7 @@ func formatAssem(i Instr, frame Frame) string {
 				}
 
 				n := assem[i] - '0'
-				sb.WriteString(frame.TempMap(sources[n]))
+				sb.WriteString(frame.TempName(sources[n]))
 
 			case 'd':
 				i++
@@ -105,7 +105,7 @@ func formatAssem(i Instr, frame Frame) string {
 				}
 
 				n := assem[i] - '0'
-				sb.WriteString(frame.TempMap(dests[n]))
+				sb.WriteString(frame.TempName(dests[n]))
 
 			case 'j':
 				i++
