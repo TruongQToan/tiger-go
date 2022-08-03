@@ -13,6 +13,7 @@ type Frame interface {
 	TempMap() map[Temp]string
 	ProcEntryExit1(body StmIr) StmIr
 	ProcEntryExit2(body []Instr) []Instr
+	FP() Temp
 }
 
 type FrameFactoryFunc func(name Label, formals []bool) Frame

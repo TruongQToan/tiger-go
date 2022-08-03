@@ -228,6 +228,10 @@ func (f *MipsFrame) AllocLocal(escape bool) FrameAccess {
 	return &InRegMipsAccess{tm.NewTemp()}
 }
 
+func (f *MipsFrame) FP() Temp {
+	return fp
+}
+
 func (f *MipsFrame) StringFrag(label Label, str string) string {
 	sb := strings.Builder{}
 	sb.WriteString(".data\n")
