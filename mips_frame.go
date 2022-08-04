@@ -132,7 +132,7 @@ func (a *InRegMipsAccess) exp(_ ExpIr) ExpIr {
 type MipsFrame struct {
 	name       Label
 	accesses   []FrameAccess
-	shiftInsts *SeqStmIr
+	shiftInsts StmIr
 	locals     int32
 }
 
@@ -174,12 +174,19 @@ func (f *MipsFrame) createAccesses(i int32, escapes []bool) {
 	}
 
 	f.accesses = append(f.accesses, acc)
-	f.shiftInsts = &SeqStmIr{
-		first: f.shiftInsts,
-		second: &MoveStmIr{
+	if f.shiftInsts == nil {
+		f.shiftInsts = &MoveStmIr{
 			dst: acc.exp(&TempExpIr{fp}),
 			src: &TempExpIr{temp: argRegs[i]},
-		},
+		}
+	} else {
+		f.shiftInsts = &SeqStmIr{
+			first: f.shiftInsts,
+			second: &MoveStmIr{
+				dst: acc.exp(&TempExpIr{fp}),
+				src: &TempExpIr{temp: argRegs[i]},
+			},
+		}
 	}
 
 	f.createAccesses(i+1, escapes)

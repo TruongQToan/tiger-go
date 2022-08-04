@@ -37,6 +37,10 @@ func Instr2FGraphNode(instr Instr) *FGraphNode {
 		use:    InitTempSet(use...),
 		def:    InitTempSet(def...),
 		isMove: isMove,
+
+		succMap: make(map[int64]int),
+		predMap: make(map[int64]int),
+		adjMap:  make(map[int64]int),
 	}
 }
 

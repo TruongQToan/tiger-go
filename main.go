@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-var fileName = flag.String("source", "./test_files/test8.tig", "source file to compile")
+var fileName = flag.String("source", "./test_files/hello.tig", "source file to compile")
 
 var (
 	strs = NewStrings()

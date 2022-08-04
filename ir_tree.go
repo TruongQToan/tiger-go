@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -295,4 +296,10 @@ func isNullStm(s StmIr) bool {
 	}
 
 	return false
+}
+
+func debugStmIr(stm StmIr) {
+	sb := strings.Builder{}
+	stm.printStm(&sb, 0)
+	fmt.Println(sb.String())
 }

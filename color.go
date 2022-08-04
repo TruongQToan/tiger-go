@@ -383,7 +383,7 @@ func (c *Coloring) selectSpill() {
 }
 
 func (c *Coloring) assignColor() {
-	for len(c.selectStack) >= 0 {
+	for len(c.selectStack) > 0 {
 		node := c.selectStack[len(c.selectStack)-1]
 		c.selectStack = c.selectStack[:len(c.selectStack)-1]
 		okColors := InitTempSet()
