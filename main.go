@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -48,13 +49,23 @@ func emitProc(sb *strings.Builder, procs []*ProcFrag) {
 		instrs, colored = Alloc(proc.frame, instrs)
 		addTab(instrs)
 
+		for reg, col := range colored {
+			fmt.Println(tm.TempString(reg), col)
+		}
+
 		prolog, epilog := proc.frame.ProcEntryExit3()
 
 		sb.WriteString(prolog)
 		for _, instr := range instrs {
-			sb.WriteString(formatAssem(instr, colored) + "\n")
+			sb.WriteString(formatAssem(instr, func(temp Temp) string {
+				return colored[temp]
+			}) + "\n")
 		}
 		sb.WriteString(epilog)
+
+		for _, instr := range instrs {
+			fmt.Println(formatAssem(instr, tm.TempString))
+		}
 	}
 }
 

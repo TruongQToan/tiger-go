@@ -11,6 +11,10 @@ func InitIGraphNodeSet() *IGraphNodeSet {
 	}
 }
 
+func (s *IGraphNodeSet) Len() int {
+	return len(s.indices)
+}
+
 func (s *IGraphNodeSet) Has(node *IGraphNode) bool {
 	_, ok := s.indices[node.temp]
 	return ok
@@ -40,15 +44,14 @@ func (s *IGraphNodeSet) Empty() bool {
 }
 
 func (s *IGraphNodeSet) Split() (*IGraphNode, *IGraphNodeSet) {
-	s1 := InitIGraphNodeSet()
 	first := s.nodes[0]
-	s1.nodes = s.nodes[1:]
+	s.nodes = s.nodes[1:]
 	delete(s.indices, first.temp)
-	for k, v := range s1.nodes {
-		s1.indices[v.temp] = k
+	for i, v := range s.nodes {
+		s.indices[v.temp] = i
 	}
 
-	return first, s1
+	return first, s
 }
 
 func (s *IGraphNodeSet) Reset() {
@@ -74,6 +77,10 @@ func (s *IGraphNodeSet) All() []*IGraphNode {
 }
 
 func (s *IGraphNodeSet) Add(node *IGraphNode) {
+	if s.Has(node) {
+		return
+	}
+
 	s.indices[node.temp] = len(s.nodes)
 	s.nodes = append(s.nodes, node)
 }
@@ -86,6 +93,9 @@ func (s *IGraphNodeSet) Remove(node *IGraphNode) {
 
 	delete(s.indices, node.temp)
 	s.nodes = append(s.nodes[:idx], s.nodes[idx+1:]...)
+	for i := idx; i < len(s.nodes); i++ {
+		s.indices[s.nodes[i].temp] = i
+	}
 }
 
 type IGraphNode struct {
@@ -95,7 +105,7 @@ type IGraphNode struct {
 }
 
 func (node *IGraphNode) NodeName() string {
-	return tm.MakeTempString(node.temp)
+	return tm.TempString(node.temp)
 }
 
 func (node *IGraphNode) Succ() []GraphNode {

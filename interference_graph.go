@@ -6,23 +6,20 @@ type tempEdge struct {
 }
 
 func computeLiveInOut(fGraph FGraph) {
-	changed := false
-	for {
-		if !changed {
-			break
-		}
-
-		changed = false
+	same := false
+	for !same {
+		same = true
 		for _, node := range fGraph {
 			oldLiveIn, oldLiveOut := node.liveIn.Clone(), node.liveOut.Clone()
 			node.liveIn = node.use.Union(node.liveOut.Diff(node.def))
+			node.liveOut = NewTempSet()
 			for _, succ := range node.succ {
 				iNode := succ.(*FGraphNode)
 				node.liveOut = node.liveOut.Union(iNode.liveIn)
 			}
 
-			if !oldLiveIn.Equal(node.liveIn) || oldLiveOut.Equal(node.liveOut) {
-				changed = true
+			if !oldLiveIn.Equal(node.liveIn) || !oldLiveOut.Equal(node.liveOut) {
+				same = false
 			}
 		}
 	}
@@ -73,7 +70,12 @@ func allMoves(fGraph FGraph, iNodes map[Temp]*IGraphNode) *MoveSet {
 	pairs := InitMoveSet()
 	for _, node := range fGraph {
 		if node.isMove {
-			src, dst := node.use.GetOneTemp(), node.def.GetOneTemp()
+			var (
+				src, dst Temp
+			)
+
+			src, node.use = node.use.Split()
+			dst, node.def = node.def.Split()
 			pairs.Add(&Move{
 				src: iNodes[src],
 				dst: iNodes[dst],

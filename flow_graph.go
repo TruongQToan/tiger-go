@@ -34,8 +34,8 @@ func Instr2FGraphNode(instr Instr) *FGraphNode {
 	return &FGraphNode{
 		id:     rand.Int63(),
 		instr:  instr,
-		use:    InitTempSet(use...),
-		def:    InitTempSet(def...),
+		use:    NewTempSet(use...),
+		def:    NewTempSet(def...),
 		isMove: isMove,
 
 		succMap: make(map[int64]int),

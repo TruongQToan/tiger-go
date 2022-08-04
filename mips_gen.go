@@ -310,16 +310,16 @@ func (c *CodeGenerator) munchStm(s StmIr) {
 func (c *CodeGenerator) munchExp(exp ExpIr) Temp {
 	switch t := exp.(type) {
 	case *CallExpIr:
-		tempCallerSaves := make([]Temp, 0, len(callerSaves))
-		for _ = range callerSaves {
-			tempCallerSaves = append(tempCallerSaves, tm.NewTemp())
+		tempCallerSaves := make([]Temp, len(callerSaves))
+		for i := 0; i < len(callerSaves); i++ {
+			tempCallerSaves[i] = tm.NewTemp()
 		}
 
 		// Move the caller saves to temporary
-		for i, exp := range callerSaves {
+		for i, reg := range callerSaves {
 			c.munchStm(&MoveStmIr{
 				dst: &TempExpIr{tempCallerSaves[i]},
-				src: &TempExpIr{exp},
+				src: &TempExpIr{reg},
 			})
 		}
 
@@ -328,6 +328,13 @@ func (c *CodeGenerator) munchExp(exp ExpIr) Temp {
 			dst:   c.callDefs,
 			src:   append([]Temp{c.munchExp(t.exp)}, c.buildArgs(argRegs, t.args)...),
 		})
+
+		for i := len(callerSaves) - 1; i >= 0; i-- {
+			c.munchStm(&MoveStmIr{
+				dst: &TempExpIr{callerSaves[i]},
+				src: &TempExpIr{tempCallerSaves[i]},
+			})
+		}
 
 		return rv
 

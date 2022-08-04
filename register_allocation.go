@@ -103,6 +103,7 @@ func rewrite(frame Frame, spilledNodes *IGraphNodeSet, instrs []Instr) []Instr {
 func Alloc(frame Frame, instrs []Instr) ([]Instr, map[Temp]string) {
 	fGraph := Instrs2FGraph(instrs)
 	iGraph, moves := InitIGraph(fGraph)
+
 	coloring := NewColoring(
 		iGraph,
 		fGraph,

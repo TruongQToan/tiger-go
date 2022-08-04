@@ -105,7 +105,7 @@ func tempName(t Temp) string {
 		return v
 	}
 
-	return tm.MakeTempString(t)
+	return tm.TempString(t)
 }
 
 type InFrameMipsAccess struct {
@@ -265,7 +265,6 @@ func ProcEntryExit2(body []Instr) []Instr {
 }
 
 func StringFrag(sb *strings.Builder, frag *StrFrag) string {
-	sb.WriteString(".data\n")
 	sb.WriteString(tm.LabelString(frag.label))
 	sb.WriteString(":\t.word\t")
 	sb.WriteString(fmt.Sprintf("%d", len(frag.str)))

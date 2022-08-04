@@ -97,7 +97,7 @@ func (c *Coloring) initMoveList() {
 		c.moveList[k] = InitMoveSet()
 	}
 
-	for _, move := range c.moves.moves {
+	for _, move := range c.moves.All() {
 		if !c.precolored.Has(move.src) {
 			c.addMoves(move.src, move)
 		}
@@ -386,7 +386,7 @@ func (c *Coloring) assignColor() {
 	for len(c.selectStack) > 0 {
 		node := c.selectStack[len(c.selectStack)-1]
 		c.selectStack = c.selectStack[:len(c.selectStack)-1]
-		okColors := InitTempSet()
+		okColors := NewTempSet()
 		for color := range c.registers {
 			okColors.Add(color)
 		}
@@ -425,9 +425,9 @@ func (c *Coloring) Color() (map[Temp]Temp, *IGraphNodeSet) {
 			c.freeze()
 		} else if !c.spillWorklist.Empty() {
 			c.selectSpill()
+		} else {
+			break
 		}
-
-		break
 	}
 
 	c.assignColor()

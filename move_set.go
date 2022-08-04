@@ -16,15 +16,14 @@ func InitMoveSet() *MoveSet {
 }
 
 func (s *MoveSet) Split() (*Move, *MoveSet) {
-	s1 := InitMoveSet()
 	first := s.moves[0]
-	s1.moves = s.moves[1:]
+	s.moves = s.moves[1:]
 	delete(s.indices, first.src.temp)
-	for i, p := range s1.moves {
-		s1.indices[p.src.temp][p.dst.temp] = i
+	for i, p := range s.moves {
+		s.indices[p.src.temp][p.dst.temp] = i
 	}
 
-	return first, s1
+	return first, s
 }
 
 func (s *MoveSet) Moves() []*Move {
@@ -32,6 +31,10 @@ func (s *MoveSet) Moves() []*Move {
 }
 
 func (s *MoveSet) Add(mv *Move) {
+	if s.Has(mv) {
+		return
+	}
+
 	if _, ok := s.indices[mv.src.temp]; !ok {
 		s.indices[mv.src.temp] = make(map[Temp]int)
 	}
@@ -78,9 +81,9 @@ func (s *MoveSet) Len() int {
 	return len(s.moves)
 }
 
-func (s *MoveSet) Has(p *Move) bool {
-	if _, ok := s.indices[p.src.temp]; ok {
-		if _, ok := s.indices[p.dst.temp]; ok {
+func (s *MoveSet) Has(mv *Move) bool {
+	if _, ok := s.indices[mv.src.temp]; ok {
+		if _, ok := s.indices[mv.dst.temp]; ok {
 			return true
 		}
 	}
@@ -88,8 +91,8 @@ func (s *MoveSet) Has(p *Move) bool {
 	return false
 }
 
-func (s *MoveSet) Remove(p *Move) {
-	src, dst := p.src.temp, p.dst.temp
+func (s *MoveSet) Remove(mv *Move) {
+	src, dst := mv.src.temp, mv.dst.temp
 	delete(s.indices, src)
 
 	idx := -1
@@ -100,7 +103,12 @@ func (s *MoveSet) Remove(p *Move) {
 		}
 	}
 
-	if idx != -1 {
-		s.moves = append(s.moves[:idx], s.moves[idx+1:]...)
+	if idx == -1 {
+		return
+	}
+
+	s.moves = append(s.moves[:idx], s.moves[idx+1:]...)
+	for i := idx; i < len(s.moves); i++ {
+		s.indices[s.moves[i].src.temp][s.moves[i].dst.temp] = i
 	}
 }

@@ -81,7 +81,7 @@ func (m *MoveInstr) jumpLabels() []Label {
 
 // in assem, we may have something like "addi `d0, `s0, 3".
 // This function replaces `d0, `s0 with actual registers.
-func formatAssem(i Instr, tempMap map[Temp]string) string {
+func formatAssem(i Instr, tempMap func(Temp) string) string {
 	sources, dests, jumpLabels := i.srcRegs(), i.dstRegs(), i.jumpLabels()
 	assem := i.assemStr()
 	sb := strings.Builder{}
@@ -96,7 +96,7 @@ func formatAssem(i Instr, tempMap map[Temp]string) string {
 				}
 
 				n := assem[i] - '0'
-				sb.WriteString(tempMap[sources[n]])
+				sb.WriteString(tempMap(sources[n]))
 
 			case 'd':
 				i++
@@ -105,7 +105,7 @@ func formatAssem(i Instr, tempMap map[Temp]string) string {
 				}
 
 				n := assem[i] - '0'
-				sb.WriteString(tempMap[dests[n]])
+				sb.WriteString(tempMap(dests[n]))
 
 			case 'j':
 				i++

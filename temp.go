@@ -25,7 +25,7 @@ func (t *TempManagement) NewTemp() Temp {
 	return Temp(strs.Symbol(fmt.Sprintf("t%d", t.tempCnt)))
 }
 
-func (t *TempManagement) MakeTempString(v Temp) string {
+func (t *TempManagement) TempString(v Temp) string {
 	return strs.Get(Symbol(v))
 }
 
@@ -44,7 +44,7 @@ func (t *TempManagement) NamedLabel(s string) Label {
 
 type TempSet map[Temp]struct{}
 
-func InitTempSet(temps ...Temp) TempSet {
+func NewTempSet(temps ...Temp) TempSet {
 	ts := make(TempSet)
 	for _, t := range temps {
 		ts.Add(t)
@@ -68,16 +68,6 @@ func (s TempSet) Remove(temp Temp) {
 	}
 
 	delete(s, temp)
-}
-
-func (s TempSet) GetOneTemp() Temp {
-	var t Temp
-	for k := range s {
-		t = k
-		break
-	}
-
-	return t
 }
 
 func (s TempSet) Add(temp Temp) {
