@@ -206,43 +206,6 @@ func (f *MipsFrame) FP() Temp {
 	return fp
 }
 
-func (f *MipsFrame) StringFrag(label Label, str string) string {
-	sb := strings.Builder{}
-	sb.WriteString(".data\n")
-	sb.WriteString(tm.LabelString(label))
-	sb.WriteString(":\t.word\t")
-	sb.WriteString(fmt.Sprintf("%d", len(str)))
-	sb.WriteString("\n\t.ascii\t\"")
-	for _, c := range str {
-		switch c {
-		case '\n':
-			sb.WriteString("\\n")
-		case '\t':
-			sb.WriteString("\\t")
-		case '0':
-			sb.WriteString("\\0")
-		case '"':
-			sb.WriteString("\\\"")
-		case '\'':
-			sb.WriteString("\\'")
-		case '\\':
-			sb.WriteString("\\\\")
-		default:
-			if c >= ' ' || c < 127 {
-				sb.WriteByte(byte(c))
-			} else {
-				sb.WriteByte('\\')
-				sb.WriteByte('0' + (byte(c) >> 6))
-				sb.WriteByte('0' + ((byte(c) >> 3) & 8))
-				sb.WriteByte('0' + (byte(c) & 8))
-			}
-		}
-	}
-
-	sb.WriteString("\"\n\t.align\t2\n")
-	return sb.String()
-}
-
 // ProcEntryExit1 is procedure entry and exit statement
 // 4. save "escaping" arguments (including static link) into the frame, move nonescaping arguments into fresh temporary registers.
 // 5. store instructions to save any calle-save registers - including the return address register - used within the function.
@@ -278,13 +241,6 @@ func (f *MipsFrame) ProcEntryExit1(body StmIr) StmIr {
 	}
 }
 
-// ProcEntryExit2 notifies the register allocation that zero, ra, sp, calleSaves are live out at the end of the function.
-func (f *MipsFrame) ProcEntryExit2(body []Instr) []Instr {
-	return append(body, &OperInstr{
-		src: append([]Temp{zero, ra, sp}, calleeSaves...),
-	})
-}
-
 func (f *MipsFrame) ProcEntryExit3() (string, string) {
 	offset := (int(f.locals) + len(argRegs)) * wordSize
 	prolog := fmt.Sprintf("%s:\n\tsw\t$fp\t0($sp)\n\tmove\t$fp\t$sp\n\taddiu\t$sp\t$sp\t-%d\n",
@@ -292,4 +248,47 @@ func (f *MipsFrame) ProcEntryExit3() (string, string) {
 
 	epilog := fmt.Sprintf("\tmove\t$sp\t$fp\n\tlw\t$fp\t0($sp)\n\tjr\t$ra\n\n")
 	return prolog, epilog
+}
+
+// ProcEntryExit2 notifies the register allocation that zero, ra, sp, calleSaves are live out at the end of the function.
+func ProcEntryExit2(body []Instr) []Instr {
+	return append(body, &OperInstr{
+		src: append([]Temp{zero, ra, sp}, calleeSaves...),
+	})
+}
+
+func StringFrag(sb *strings.Builder, frag *StrFrag) string {
+	sb.WriteString(".data\n")
+	sb.WriteString(tm.LabelString(frag.label))
+	sb.WriteString(":\t.word\t")
+	sb.WriteString(fmt.Sprintf("%d", len(frag.str)))
+	sb.WriteString("\n\t.ascii\t\"")
+	for _, c := range frag.str {
+		switch c {
+		case '\n':
+			sb.WriteString("\\n")
+		case '\t':
+			sb.WriteString("\\t")
+		case '0':
+			sb.WriteString("\\0")
+		case '"':
+			sb.WriteString("\\\"")
+		case '\'':
+			sb.WriteString("\\'")
+		case '\\':
+			sb.WriteString("\\\\")
+		default:
+			if c >= ' ' || c < 127 {
+				sb.WriteByte(byte(c))
+			} else {
+				sb.WriteByte('\\')
+				sb.WriteByte('0' + (byte(c) >> 6))
+				sb.WriteByte('0' + ((byte(c) >> 3) & 8))
+				sb.WriteByte('0' + (byte(c) & 8))
+			}
+		}
+	}
+
+	sb.WriteString("\"\n\t.align\t2\n")
+	return sb.String()
 }

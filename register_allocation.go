@@ -100,7 +100,7 @@ func rewrite(frame Frame, spilledNodes *IGraphNodeSet, instrs []Instr) []Instr {
 	return instrs
 }
 
-func Alloc(frame Frame, instrs []Instr) ([]Instr, map[Temp]Temp) {
+func Alloc(frame Frame, instrs []Instr) ([]Instr, map[Temp]string) {
 	fGraph := Instrs2FGraph(instrs)
 	iGraph, moves := InitIGraph(fGraph)
 	coloring := NewColoring(
@@ -119,7 +119,12 @@ func Alloc(frame Frame, instrs []Instr) ([]Instr, map[Temp]Temp) {
 			}
 		}
 
-		return filteredInstrs, colored
+		res := make(map[Temp]string)
+		for k, v := range colored {
+			res[k] = frame.TempName(v)
+		}
+
+		return filteredInstrs, res
 	}
 
 	rewrittenInstrs := rewrite(frame, spilledNodes, instrs)

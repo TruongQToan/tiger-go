@@ -323,7 +323,7 @@ func (t *Translate) RelOp(op Operator, left, right TransExp) TransExp {
 
 func (t *Translate) strExp(s string) TransExp {
 	label := tm.NewLabel()
-	frags = append(frags, &StringFrag{
+	frags = append(frags, &StrFrag{
 		label: label,
 		str:   s,
 	})

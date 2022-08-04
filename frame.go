@@ -8,11 +8,10 @@ type Frame interface {
 	Name() Label
 	Formals() []FrameAccess
 	AllocLocal(escape bool) FrameAccess
-	StringFrag(label Label, str string) string
 	TempName(t Temp) string
 	TempMap() map[Temp]string
 	ProcEntryExit1(body StmIr) StmIr
-	ProcEntryExit2(body []Instr) []Instr
+	ProcEntryExit3() (string, string)
 	FP() Temp
 }
 
@@ -38,9 +37,9 @@ type ProcFrag struct {
 
 func (frag *ProcFrag) IsFragment() {}
 
-type StringFrag struct {
+type StrFrag struct {
 	label Label
 	str   string
 }
 
-func (frag *StringFrag) IsFragment() {}
+func (frag *StrFrag) IsFragment() {}

@@ -25,22 +25,21 @@ func NewSemant(trans *Translate, vent *VarST, tenv *TypeST) *Semant {
 	}
 }
 
-func (s *Semant) TransProg(exp Exp) (TransExp, error) {
+func (s *Semant) TransProg(exp Exp) ([]Frag, error) {
 	mainLevel := Level{
 		parent: OutermostLevel,
 		frame:  NewMipsFrame(tm.NamedLabel("main"), []bool{true}),
 		u:      rand.Int63(),
 	}
 
-	progExp, ty, err := s.transExp(&mainLevel, exp, tm.NewLabel())
+	progExp, _, err := s.transExp(&mainLevel, exp, tm.NewLabel())
 	if err != nil {
 		return nil, err
 	}
 
 	ProcEntryExit(&mainLevel, progExp)
 
-	fmt.Printf("Parse type %s\n", ty.TypeName())
-	return progExp, nil
+	return frags, nil
 }
 
 // TODO: refine this one

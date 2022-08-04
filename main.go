@@ -16,31 +16,80 @@ var (
 	tm = NewTempManagement()
 )
 
-func emitProc(canon *Canon, fo *os.File, proc *ProcFrag) {
-	stms, _ := canon.Linearize(proc.body)
-	blocks, doneLabel := canon.BasicBlocks(stms)
-	stms = canon.TraceSchedule(blocks, doneLabel)
-
-	instrs := make([]Instr, 0)
-	for _, stm := range stms {
-		codeGen := NewCodeGenerator()
-		instrs = append(instrs, codeGen.GenCode(stm)...)
-	}
-
-	for _, i := range instrs {
-		fo.WriteString(formatAssem(i, proc.frame) + "\n")
+func addTab(instrs []Instr) {
+	for _, instr := range instrs {
+		switch v := instr.(type) {
+		case *OperInstr:
+			v.assem = "\t" + v.assem
+		case *MoveInstr:
+			v.assem = "\t" + v.assem
+		}
 	}
 }
 
-func main() {
-	f, err := os.ReadFile(*fileName)
-	if err != nil {
-		log.Fatalf("error when reading input file %v", err)
+func emitProc(sb *strings.Builder, procs []*ProcFrag) {
+	for _, proc := range procs {
+		canon := &Canon{}
+		stms, _ := canon.Linearize(proc.body)
+		blocks, doneLabel := canon.BasicBlocks(stms)
+		stms = canon.TraceSchedule(blocks, doneLabel)
+
+		instrs := make([]Instr, 0)
+		for _, stm := range stms {
+			codeGen := NewCodeGenerator()
+			instrs = append(instrs, codeGen.GenCode(stm)...)
+		}
+
+		instrs = ProcEntryExit2(instrs)
+		var (
+			colored map[Temp]string
+		)
+
+		instrs, colored = Alloc(proc.frame, instrs)
+		addTab(instrs)
+
+		prolog, epilog := proc.frame.ProcEntryExit3()
+
+		sb.WriteString(prolog)
+		for _, instr := range instrs {
+			sb.WriteString(formatAssem(instr, colored) + "\n")
+		}
+		sb.WriteString(epilog)
+	}
+}
+
+func emitString(sb *strings.Builder, strs []*StrFrag) {
+	for _, str := range strs {
+		StringFrag(sb, str)
+	}
+}
+
+func emit(frags []Frag) string {
+	var (
+		procs []*ProcFrag
+		strs []*StrFrag
+	)
+
+	for _, frag := range frags {
+		if f, ok := frag.(*ProcFrag); ok {
+			procs = append(procs, f)
+		} else {
+			strs = append(strs, frag.(*StrFrag))
+		}
 	}
 
+	sb := strings.Builder{}
+	sb.WriteString("\t.globl main\n")
+	sb.WriteString("\t.data\n")
+	emitString(&sb, strs)
+	sb.WriteString("\n\t.text\n")
+	emitProc(&sb, procs)
+	return sb.String()
+}
+
+func compile(f []byte) {
 	buf := bufio.NewReader(bytes.NewReader(f))
 	lexer := NewLexer(*fileName, buf)
-
 	parser := NewParser(lexer, strs)
 	exp, err := parser.Parse()
 	if err != nil {
@@ -49,101 +98,27 @@ func main() {
 
 	findEscape := NewFindEscape()
 	findEscape.FindEscape(exp)
-
 	translate := Translate{frameFactory: NewMipsFrame}
 	venv, tenv := InitBaseVarEnv(), InitBaseTypeEnv()
 	semant := NewSemant(&translate, venv, tenv)
-
-	transExp, err := semant.TransProg(exp)
+	frags, err := semant.TransProg(exp)
 	if err != nil {
 		log.Fatalf("semantic error %v", err)
 	}
 
-	strBuilder := strings.Builder{}
-	transExp.print(&strBuilder, 0)
-
-	fo, err := os.Create("tiger_ir.txt")
+	fo, err := os.Create(*fileName + ".s")
 	if err != nil {
 		log.Fatalf("cannot create file %v", err)
 	}
 
-	fo.WriteString(strBuilder.String())
+	fo.WriteString(emit(frags))
+}
 
-	fo, err = os.Create("frags.txt")
+func main() {
+	f, err := os.ReadFile(*fileName)
 	if err != nil {
-		log.Fatalf("cannot create file %v", err)
+		log.Fatalf("error when reading input file %v", err)
 	}
 
-	var (
-		procFrags []*ProcFrag
-		strFrags  []*StringFrag
-	)
-
-	strBuilder.Reset()
-	for _, frag := range frags {
-		if f, ok := frag.(*ProcFrag); ok {
-			strBuilder.WriteString("\nProcedure Frag\n")
-			strBuilder.WriteString(strs.Get(Symbol(f.frame.Name())) + "\n")
-			f.body.printStm(&strBuilder, 0)
-			procFrags = append(procFrags, f)
-		}
-
-		if f, ok := frag.(*StringFrag); ok {
-			strBuilder.WriteString("\nString Frag\n")
-			strBuilder.WriteString(strs.Get(Symbol(f.label)) + "\n")
-			strBuilder.WriteString(f.str + "\n")
-			strFrags = append(strFrags, f)
-		}
-	}
-
-	fo.WriteString(strBuilder.String())
-	fo, err = os.Create("frags_sche.txt")
-	if err != nil {
-		log.Fatalf("cannot create file %v", err)
-	}
-
-	canon := &Canon{}
-
-	strBuilder.Reset()
-	for _, frag := range frags {
-		if f, ok := frag.(*ProcFrag); ok {
-			stms, _ := canon.Linearize(f.body)
-
-			//for _, stm := range stms {
-			//	stm.printStm(&strBuilder, 0)
-			//}
-
-			blocks, done := canon.BasicBlocks(stms)
-			//for _, block := range blocks {
-			//	fmt.Println("done label", tm.LabelString(done))
-			//	for i, stm := range block {
-			//		fmt.Println("Statement ", i)
-			//		stm.printStm(&strBuilder, 0)
-			//	}
-			//}
-
-			stms = canon.TraceSchedule(blocks, done)
-			for _, stm := range stms {
-				stm.printStm(&strBuilder, 0)
-			}
-		}
-	}
-
-	fo.WriteString(strBuilder.String())
-
-	fo, err = os.Create(*fileName + ".s")
-	if err != nil {
-		log.Fatalf("cannot create file " + *fileName + ".s")
-	}
-
-	fo.WriteString("\t.global main\n")
-	fo.WriteString("\t.data\n")
-	for _, str := range strFrags {
-		fo.WriteString(tm.LabelString(str.label) + ": .asciiz \"" + str.str + "\"\n")
-	}
-
-	fo.WriteString("\n\t.text\n")
-	for _, proc := range procFrags {
-		emitProc(canon, fo, proc)
-	}
+	compile(f)
 }
