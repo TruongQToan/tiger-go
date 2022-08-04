@@ -261,6 +261,21 @@ func (s *SeqStmIr) printStm(sb *strings.Builder, level int) {
 	s.second.printStm(sb, level+2)
 }
 
+func seqStm(stms ...StmIr) StmIr {
+	if len(stms) == 0 {
+		return nil
+	}
+
+	if len(stms) == 1 {
+		return stms[0]
+	}
+
+	return &SeqStmIr{
+		first:  stms[0],
+		second: seqStm(stms[1:]...),
+	}
+}
+
 type LabelStmIr struct {
 	label Label
 }

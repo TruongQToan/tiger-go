@@ -70,32 +70,6 @@ var (
 	// caller-saved registers
 	callerSaves = []Temp{t0, t1, t2, t3, t4, t5, t6, t7, t8, t9}
 
-	registers = map[string]Temp{
-		"$a0": a0,
-		"$a1": a1,
-		"$a2": a2,
-		"$a3": a3,
-		"$t0": t0,
-		"$t1": t1,
-		"$t2": t2,
-		"$t3": t3,
-		"$t4": t4,
-		"$t5": t5,
-		"$t6": t6,
-		"$t7": t7,
-		"$s1": s1,
-		"$s2": s2,
-		"$s3": s3,
-		"$s4": s4,
-		"$s5": s5,
-		"$s6": s6,
-		"$s7": s7,
-		"$fp": fp,
-		"$v0": rv,
-		"$sp": sp,
-		"$ra": ra,
-	}
-
 	tempMap = map[Temp]string{
 		a0: "$a0",
 		a1: "$a1",
@@ -274,11 +248,48 @@ func (f *MipsFrame) StringFrag(label Label, str string) string {
 // 5. store instructions to save any calle-save registers - including the return address register - used within the function.
 // 8. load instructions to restore the calle-save registers
 func (f *MipsFrame) ProcEntryExit1(body StmIr) StmIr {
-	return body
+	shifts := f.shiftInsts
+
+	calleeSaveRegs := append(calleeSaves, ra)
+	accesses := make([]FrameAccess, len(calleeSaveRegs))
+	for i := 0; i < len(calleeSaveRegs); i++ {
+		accesses[i] = f.AllocLocal(false)
+	}
+
+	saves := make([]StmIr, 0, len(calleeSaveRegs))
+	for i, reg := range calleeSaveRegs {
+		saves = append(saves, &MoveStmIr{
+			dst: accesses[i].exp(&TempExpIr{fp}),
+			src: &TempExpIr{reg},
+		})
+	}
+
+	restores := make([]StmIr, 0, len(calleeSaveRegs))
+	for i := len(calleeSaveRegs) - 1; i >= 0; i-- {
+		restores = append(restores, &MoveStmIr{
+			src: accesses[i].exp(&TempExpIr{fp}),
+			dst: &TempExpIr{calleeSaveRegs[i]},
+		})
+	}
+
+	return &SeqStmIr{
+		first:  shifts,
+		second: seqStm(append(append(saves, body), restores...)...),
+	}
 }
 
+// ProcEntryExit2 notifies the register allocation that zero, ra, sp, calleSaves are live out at the end of the function.
 func (f *MipsFrame) ProcEntryExit2(body []Instr) []Instr {
 	return append(body, &OperInstr{
 		src: append([]Temp{zero, ra, sp}, calleeSaves...),
 	})
+}
+
+func (f *MipsFrame) ProcEntryExit3() (string, string) {
+	offset := (int(f.locals) + len(argRegs)) * wordSize
+	prolog := fmt.Sprintf("%s:\n\tsw\t$fp\t0($sp)\n\tmove\t$fp\t$sp\n\taddiu\t$sp\t$sp\t-%d\n",
+		tm.LabelString(f.Name()), offset)
+
+	epilog := fmt.Sprintf("\tmove\t$sp\t$fp\n\tlw\t$fp\t0($sp)\n\tjr\t$ra\n\n")
+	return prolog, epilog
 }

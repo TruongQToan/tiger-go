@@ -378,7 +378,7 @@ func (t *Translate) letExp(desc []TransExp, body TransExp) TransExp {
 
 	return &Ex{
 		&EsEqExpIr{
-			stm: t.seqStm(stms...),
+			stm: seqStm(stms...),
 			exp: body.unEx(),
 		},
 	}
@@ -450,7 +450,7 @@ func (t *Translate) ifElse(ifEx, thenEx, elseEx TransExp) TransExp {
 		if elseEx != nil {
 			return &Ex{
 				exp: &EsEqExpIr{
-					stm: t.seqStm(
+					stm: seqStm(
 						testFunc(tl, fl),
 						&LabelStmIr{
 							tl,
@@ -478,7 +478,7 @@ func (t *Translate) ifElse(ifEx, thenEx, elseEx TransExp) TransExp {
 	case *Nx:
 		if elseEx != nil {
 			return &Nx{
-				stm: t.seqStm(
+				stm: seqStm(
 					testFunc(tl, fl),
 					&LabelStmIr{
 						tl,
@@ -496,7 +496,7 @@ func (t *Translate) ifElse(ifEx, thenEx, elseEx TransExp) TransExp {
 		}
 
 		return &Nx{
-			t.seqStm(
+			seqStm(
 				testFunc(tl, fl),
 				&LabelStmIr{tl},
 				v.stm,
@@ -508,7 +508,7 @@ func (t *Translate) ifElse(ifEx, thenEx, elseEx TransExp) TransExp {
 		if elseEx != nil {
 			return &Cx{
 				func(tl1, fl1 Label) StmIr {
-					return t.seqStm(
+					return seqStm(
 						testFunc(tl, fl),
 						&LabelStmIr{tl},
 						v.cx(tl1, fl1),
@@ -539,7 +539,7 @@ func (t *Translate) forLoop(level *Level, acc *TranslateAccess, from, to, body T
 
 	return t.whileLoop(
 		t.RelOp(Le, itVar, to),
-		&Nx{t.seqStm(t.assign(itVar, from).unNx(), &bstm)},
+		&Nx{seqStm(t.assign(itVar, from).unNx(), &bstm)},
 		doneLabel,
 	)
 }
@@ -547,7 +547,7 @@ func (t *Translate) forLoop(level *Level, acc *TranslateAccess, from, to, body T
 func (t *Translate) whileLoop(pex, bex TransExp, doneLabel Label) TransExp {
 	tl, bl := tm.NewLabel(), tm.NewLabel()
 	return &Nx{
-		t.seqStm(
+		seqStm(
 			&LabelStmIr{tl},
 			&CJumpStmIr{
 				relop:      EqIr,
@@ -595,24 +595,9 @@ func (t *Translate) record(fields []TransExp) TransExp {
 
 	return &Ex{
 		&EsEqExpIr{
-			stm: t.seqStm(stms...),
+			stm: seqStm(stms...),
 			exp: &TempExpIr{r},
 		},
-	}
-}
-
-func (t *Translate) seqStm(stms ...StmIr) StmIr {
-	if len(stms) == 0 {
-		return nil
-	}
-
-	if len(stms) == 1 {
-		return stms[0]
-	}
-
-	return &SeqStmIr{
-		first:  stms[0],
-		second: t.seqStm(stms[1:]...),
 	}
 }
 
