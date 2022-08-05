@@ -69,33 +69,43 @@ type EnvEntry interface {
 }
 
 type VarEntry struct {
-	ty SemantTy
+	ty     SemantTy
+	access *TranslateAccess
 }
 
 func (v *VarEntry) IsEnvEntry() {}
 
 type FunEntry struct {
+	level   *Level
+	label   Label
 	formals []SemantTy
 	result  SemantTy
 }
 
 func (v *FunEntry) IsEnvEntry() {}
 
-func InitBaseTypeEnv(strs *Strings) *TypeST {
-	symbols := NewTypeST(strs)
+func InitBaseTypeEnv() *TypeST {
+	symbols := NewTypeST()
 	symbols.Enter(strs.Symbol("int"), &IntSemantTy{})
 	symbols.Enter(strs.Symbol("string"), &StringSemantTy{})
 	return symbols
 }
 
-func InitBaseVarEnv(strs *Strings) *VarST {
-	symbols := NewVarST(strs)
+func InitBaseVarEnv() *VarST {
+	symbols := NewVarST()
 	for _, finfo := range baseFuncs {
 		symbols.Enter(strs.Symbol(finfo.name), &FunEntry{
 			formals: finfo.args,
 			result:  finfo.resTy,
+			level:   OutermostLevel,
+			label:   tm.NamedLabel(finfo.name),
 		})
 	}
 
 	return symbols
+}
+
+type EscapeEntry struct {
+	depth  int
+	escape *bool
 }

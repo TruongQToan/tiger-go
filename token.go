@@ -41,7 +41,7 @@ func NewStr(s string, pos Pos) *Token {
 	}
 }
 
-func NewInt(i int64, pos Pos) *Token {
+func NewInt(i int32, pos Pos) *Token {
 	return &Token{
 		tok:   "int",
 		value: i,

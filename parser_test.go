@@ -51,6 +51,6 @@ func testFile(t *testing.T, fileName string) {
 	exp, err := parser.Parse()
 	require.NoError(t, err)
 	strBuilder := strings.Builder{}
-	exp.String(strs, &strBuilder, 0)
+	exp.String(&strBuilder, 0)
 	fmt.Println(strBuilder.String())
 }

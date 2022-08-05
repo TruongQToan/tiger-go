@@ -1,5 +1,7 @@
 package main
 
+import "errors"
+
 type Parser struct {
 	lexer     *Lexer
 	lookahead *Token
@@ -77,10 +79,6 @@ func (p *Parser) forExp() (Exp, error) {
 	}
 
 	sym := p.strings.Symbol(varName)
-	itVar := &SimpleVar{
-		symbol: sym,
-		pos:    tok.pos,
-	}
 
 	tok, err := p.peekNext()
 	if err != nil {
@@ -140,59 +138,12 @@ func (p *Parser) forExp() (Exp, error) {
 		return nil, err
 	}
 
-	endSymbol := p.strings.Symbol(varName + "_end")
-	declarations := []Declaration{
-		&VarDecl{
-			name: sym,
-			init: start,
-		},
-		&VarDecl{
-			name: endSymbol,
-			init: end,
-		},
-	}
-
-	whileBody := IfExp{
-		predicate: &OperExp{
-			left: &VarExp{itVar},
-			op:   Le,
-			right: &VarExp{
-				&SimpleVar{symbol: endSymbol},
-			},
-		},
-		then: &WhileExp{
-			pred: &IntExp{
-				val: 1,
-			},
-			body: &SequenceExp{
-				seq: []Exp{
-					body,
-					&IfExp{
-						predicate: &OperExp{
-							left:  &VarExp{itVar},
-							op:    Lt,
-							right: &VarExp{&SimpleVar{symbol: endSymbol}},
-						},
-						then: &AssignExp{
-							exp: &OperExp{
-								left:  &VarExp{itVar},
-								op:    Plus,
-								right: &IntExp{val: 1},
-							},
-							variable: itVar,
-						},
-						els: &BreakExp{},
-					},
-				},
-			},
-		},
-		els: nil,
-	}
-
-	return &LetExp{
-		body:  &whileBody,
-		decls: declarations,
-		pos:   pos,
+	return &ForExp{
+		sym:  sym,
+		from: start,
+		to:   end,
+		body: body,
+		pos:  pos,
 	}, nil
 }
 
@@ -289,7 +240,12 @@ func (p *Parser) funcArgs() ([]Exp, error) {
 
 func (p *Parser) oneField() (*RecordField, error) {
 	tok := p.peekToken()
-	name := tok.value.(string)
+	name, ok := tok.value.(string)
+	if !ok {
+		// TODO: test 33
+		return nil, errors.New("invalid record")
+	}
+
 	sym := p.strings.Symbol(name)
 	pos := tok.pos
 
@@ -568,7 +524,7 @@ func (p *Parser) intConst() (Exp, error) {
 	}
 
 	return &IntExp{
-		val: tok.value.(int64),
+		val: tok.value.(int32),
 		pos: tok.pos,
 	}, nil
 }
@@ -619,9 +575,10 @@ func (p *Parser) fieldDecl() (*Field, error) {
 	}
 
 	typSym := p.strings.Symbol(tok.value.(string))
+	escape := true
 	return &Field{
 		name:   varSym,
-		escape: false,
+		escape: &escape,
 		typ:    typSym,
 		pos:    pos,
 	}, p.nextToken()
@@ -702,7 +659,7 @@ func (p *Parser) funcDecl() (*FuncDecl, error) {
 		return nil, unexpectedEofErr(p.lookahead.pos)
 	}
 
-	ty, pos, err := p.optionalType()
+	ty, _, err := p.optionalType()
 	if err != nil {
 		return nil, err
 	}
@@ -729,7 +686,7 @@ func (p *Parser) funcDecl() (*FuncDecl, error) {
 		name:        functionNameSym,
 		params:      params,
 		resultTy:    ty,
-		resultTyPos: *pos,
+		resultTyPos: funcPos,
 		body:        body,
 		pos:         funcPos,
 	}, nil
@@ -912,9 +869,10 @@ func (p *Parser) varDecl() (Declaration, error) {
 		return nil, err
 	}
 
+	escape := true
 	return &VarDecl{
 		name:   varName,
-		escape: false,
+		escape: &escape,
 		typ:    ty,
 		init:   init,
 		pos:    pos,
@@ -1016,14 +974,14 @@ LOOP:
 			seqExp = e
 		} else {
 			seqExp = &SequenceExp{
-				seq: exps,
-				pos: firstExpPos,
+				exps: exps,
+				pos:  firstExpPos,
 			}
 		}
 	} else {
 		seqExp = &SequenceExp{
-			seq: exps,
-			pos: firstExpPos,
+			exps: exps,
+			pos:  firstExpPos,
 		}
 	}
 
@@ -1067,7 +1025,7 @@ func (p *Parser) seqExp() (Exp, error) {
 			return nil, err
 		}
 
-		return &NilExp{pos: p.peekToken().pos}, nil
+		return &UnitExp{p.peekToken().pos}, nil
 	}
 
 	exp, err := p.Exp()
@@ -1106,8 +1064,8 @@ func (p *Parser) seqExp() (Exp, error) {
 	}
 
 	return &SequenceExp{
-		seq: seqExp,
-		pos: pos,
+		exps: seqExp,
+		pos:  pos,
 	}, nil
 }
 

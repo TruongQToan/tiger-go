@@ -7,7 +7,7 @@ import (
 )
 
 type String interface {
-	String(strs *Strings, strBuilder *strings.Builder, level int)
+	String(strBuilder *strings.Builder, level int)
 }
 
 const (
@@ -82,7 +82,7 @@ type RecordField struct {
 	pos   Pos
 }
 
-func (rec *RecordField) String(strs *Strings, strBuilder *strings.Builder, level int) {
+func (rec *RecordField) String(strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level)
 	strBuilder.WriteString("RecordField\n")
 	indent(strBuilder, level+1)
@@ -91,7 +91,7 @@ func (rec *RecordField) String(strs *Strings, strBuilder *strings.Builder, level
 	strBuilder.WriteString(strs.Get(rec.ident) + "\n")
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Exp\n")
-	rec.expr.String(strs, strBuilder, level+2)
+	rec.expr.String(strBuilder, level+2)
 }
 
 type Declaration interface {
@@ -101,12 +101,12 @@ type Declaration interface {
 
 type Field struct {
 	name   Symbol
-	escape bool
+	escape *bool
 	typ    Symbol
 	pos    Pos
 }
 
-func (f *Field) String(strs *Strings, strBuilder *strings.Builder, level int) {
+func (f *Field) String(strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level)
 	strBuilder.WriteString("Field\n")
 	indent(strBuilder, level+1)
@@ -120,7 +120,7 @@ func (f *Field) String(strs *Strings, strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Escape\n")
 	indent(strBuilder, level+2)
-	strBuilder.WriteString(strconv.FormatBool(f.escape) + "\n")
+	strBuilder.WriteString(strconv.FormatBool(*f.escape) + "\n")
 }
 
 type FuncDecl struct {
@@ -136,7 +136,7 @@ func (f *FuncDecl) DeclPos() Pos {
 	return f.pos
 }
 
-func (f *FuncDecl) String(strs *Strings, strBuilder *strings.Builder, level int) {
+func (f *FuncDecl) String(strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level)
 	strBuilder.WriteString("FuncDecl\n")
 	indent(strBuilder, level+1)
@@ -150,17 +150,17 @@ func (f *FuncDecl) String(strs *Strings, strBuilder *strings.Builder, level int)
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Params\n")
 	for _, field := range f.params {
-		field.String(strs, strBuilder, level+2)
+		field.String(strBuilder, level+2)
 	}
 
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Body\n")
-	f.body.String(strs, strBuilder, level+2)
+	f.body.String(strBuilder, level+2)
 }
 
 type VarDecl struct {
 	name   Symbol
-	escape bool
+	escape *bool
 	typ    Symbol
 	init   Exp
 	pos    Pos
@@ -170,7 +170,7 @@ func (f *VarDecl) DeclPos() Pos {
 	return f.pos
 }
 
-func (f *VarDecl) String(strs *Strings, strBuilder *strings.Builder, level int) {
+func (f *VarDecl) String(strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level)
 	strBuilder.WriteString("VarDecl\n")
 	indent(strBuilder, level+1)
@@ -184,10 +184,10 @@ func (f *VarDecl) String(strs *Strings, strBuilder *strings.Builder, level int) 
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Escape\n")
 	indent(strBuilder, level+2)
-	strBuilder.WriteString(strconv.FormatBool(f.escape) + "\n")
+	strBuilder.WriteString(strconv.FormatBool(*f.escape) + "\n")
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Init\n")
-	f.init.String(strs, strBuilder, level+2)
+	f.init.String(strBuilder, level+2)
 }
 
 type TypeDecl struct {
@@ -200,7 +200,7 @@ func (f *TypeDecl) DeclPos() Pos {
 	return f.pos
 }
 
-func (f *TypeDecl) String(strs *Strings, strBuilder *strings.Builder, level int) {
+func (f *TypeDecl) String(strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level)
 	strBuilder.WriteString("TypeDecl\n")
 	indent(strBuilder, level+1)
@@ -209,7 +209,7 @@ func (f *TypeDecl) String(strs *Strings, strBuilder *strings.Builder, level int)
 	strBuilder.WriteString(strs.Get(f.tyName) + "\n")
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Type\n")
-	f.ty.String(strs, strBuilder, level+2)
+	f.ty.String(strBuilder, level+2)
 }
 
 type Ty interface {
@@ -226,7 +226,7 @@ func (t *NameTy) TyPos() Pos {
 	return t.pos
 }
 
-func (t *NameTy) String(strs *Strings, strBuilder *strings.Builder, level int) {
+func (t *NameTy) String(strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level)
 	strBuilder.WriteString("NameTy\n")
 	indent(strBuilder, level+1)
@@ -256,11 +256,11 @@ func (t *RecordTy) TyPos() Pos {
 	return t.pos
 }
 
-func (t *RecordTy) String(strs *Strings, strBuilder *strings.Builder, level int) {
+func (t *RecordTy) String(strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level)
 	strBuilder.WriteString("RecordType\n")
 	for _, field := range t.fields {
-		field.String(strs, strBuilder, level+1)
+		field.String(strBuilder, level+1)
 	}
 }
 
@@ -273,7 +273,7 @@ func (t *ArrayTy) TyPos() Pos {
 	return t.pos
 }
 
-func (t *ArrayTy) String(strs *Strings, strBuilder *strings.Builder, level int) {
+func (t *ArrayTy) String(strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level)
 	strBuilder.WriteString("ArrayType\n")
 	indent(strBuilder, level+1)
@@ -296,7 +296,7 @@ func (e *ArrExp) ExpPos() Pos {
 	return e.pos
 }
 
-func (e *ArrExp) String(strs *Strings, strBuilder *strings.Builder, level int) {
+func (e *ArrExp) String(strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level)
 	strBuilder.WriteString("ArrExp\n")
 	indent(strBuilder, level+1)
@@ -305,10 +305,10 @@ func (e *ArrExp) String(strs *Strings, strBuilder *strings.Builder, level int) {
 	strBuilder.WriteString(strs.Get(e.typ) + "\n")
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Size\n")
-	e.size.String(strs, strBuilder, level+2)
+	e.size.String(strBuilder, level+2)
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Init\n")
-	e.init.String(strs, strBuilder, level+2)
+	e.init.String(strBuilder, level+2)
 }
 
 type AssignExp struct {
@@ -316,15 +316,15 @@ type AssignExp struct {
 	variable Var
 }
 
-func (e *AssignExp) String(strs *Strings, strBuilder *strings.Builder, level int) {
+func (e *AssignExp) String(strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level)
 	strBuilder.WriteString("AssignExp\n")
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Variable\n")
-	e.variable.String(strs, strBuilder, level+2)
+	e.variable.String(strBuilder, level+2)
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Exp\n")
-	e.exp.String(strs, strBuilder, level+2)
+	e.exp.String(strBuilder, level+2)
 }
 
 func (e *AssignExp) ExpPos() Pos {
@@ -335,7 +335,7 @@ type BreakExp struct {
 	pos Pos
 }
 
-func (e *BreakExp) String(_ *Strings, strBuilder *strings.Builder, level int) {
+func (e *BreakExp) String(strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level)
 	strBuilder.WriteString("Break\n")
 }
@@ -350,7 +350,7 @@ type CallExp struct {
 	pos      Pos
 }
 
-func (e *CallExp) String(strs *Strings, strBuilder *strings.Builder, level int) {
+func (e *CallExp) String(strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level)
 	strBuilder.WriteString("CallExp\n")
 	indent(strBuilder, level+1)
@@ -360,33 +360,11 @@ func (e *CallExp) String(strs *Strings, strBuilder *strings.Builder, level int) 
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Args\n")
 	for _, exp := range e.args {
-		exp.String(strs, strBuilder, level+2)
+		exp.String(strBuilder, level+2)
 	}
 }
 
 func (e *CallExp) ExpPos() Pos {
-	return e.pos
-}
-
-type FieldExp struct {
-	firstExp  Exp
-	fieldName Symbol
-	pos       Pos
-}
-
-func (e *FieldExp) String(strs *Strings, strBuilder *strings.Builder, level int) {
-	indent(strBuilder, level)
-	strBuilder.WriteString("FieldExp\n")
-	indent(strBuilder, level+1)
-	strBuilder.WriteString("FirstExp\n")
-	e.firstExp.String(strs, strBuilder, level+2)
-	indent(strBuilder, level+1)
-	strBuilder.WriteString("Fiel.Get\n")
-	indent(strBuilder, level+2)
-	strBuilder.WriteString(strs.Get(e.fieldName) + "\n")
-}
-
-func (e *FieldExp) ExpPos() Pos {
 	return e.pos
 }
 
@@ -397,19 +375,19 @@ type IfExp struct {
 	pos       Pos
 }
 
-func (e *IfExp) String(strs *Strings, strBuilder *strings.Builder, level int) {
+func (e *IfExp) String(strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level)
 	strBuilder.WriteString("IfExp\n")
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Predicate\n")
-	e.predicate.String(strs, strBuilder, level+2)
+	e.predicate.String(strBuilder, level+2)
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Then\n")
-	e.then.String(strs, strBuilder, level+2)
+	e.then.String(strBuilder, level+2)
 	if e.els != nil {
 		indent(strBuilder, level+1)
 		strBuilder.WriteString("Else\n")
-		e.els.String(strs, strBuilder, level+2)
+		e.els.String(strBuilder, level+2)
 	}
 }
 
@@ -418,15 +396,15 @@ func (e *IfExp) ExpPos() Pos {
 }
 
 type IntExp struct {
-	val int64
+	val int32
 	pos Pos
 }
 
-func (e *IntExp) String(_ *Strings, strBuilder *strings.Builder, level int) {
+func (e *IntExp) String(strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level)
 	strBuilder.WriteString("Int\n")
 	indent(strBuilder, level+1)
-	strBuilder.WriteString(strconv.FormatInt(e.val, 10) + "\n")
+	strBuilder.WriteString(strconv.FormatInt(int64(e.val), 10) + "\n")
 }
 
 func (e *IntExp) ExpPos() Pos {
@@ -439,20 +417,33 @@ type LetExp struct {
 	pos   Pos
 }
 
-func (e *LetExp) String(strs *Strings, strBuilder *strings.Builder, level int) {
+func (e *LetExp) String(strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level)
 	strBuilder.WriteString("Let\n")
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Decls\n")
 	for _, decl := range e.decls {
-		decl.String(strs, strBuilder, level+2)
+		decl.String(strBuilder, level+2)
 	}
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Body\n")
-	e.body.String(strs, strBuilder, level+2)
+	e.body.String(strBuilder, level+2)
 }
 
 func (e *LetExp) ExpPos() Pos {
+	return e.pos
+}
+
+type UnitExp struct {
+	pos Pos
+}
+
+func (e *UnitExp) String(strBuilder *strings.Builder, level int) {
+	indent(strBuilder, level)
+	strBuilder.WriteString("Unit\n")
+}
+
+func (e *UnitExp) ExpPos() Pos {
 	return e.pos
 }
 
@@ -460,7 +451,7 @@ type NilExp struct {
 	pos Pos
 }
 
-func (e *NilExp) String(_ *Strings, strBuilder *strings.Builder, level int) {
+func (e *NilExp) String(strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level)
 	strBuilder.WriteString("Nil\n")
 }
@@ -479,7 +470,7 @@ func (e *OperExp) ExpPos() Pos {
 	return e.left.ExpPos()
 }
 
-func (e *OperExp) String(strs *Strings, strBuilder *strings.Builder, level int) {
+func (e *OperExp) String(strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level)
 	strBuilder.WriteString("OperExp\n")
 	indent(strBuilder, level+1)
@@ -487,10 +478,10 @@ func (e *OperExp) String(strs *Strings, strBuilder *strings.Builder, level int) 
 	e.op.String(strs, strBuilder, level+2)
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Left\n")
-	e.left.String(strs, strBuilder, level+2)
+	e.left.String(strBuilder, level+2)
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Right\n")
-	e.right.String(strs, strBuilder, level+2)
+	e.right.String(strBuilder, level+2)
 }
 
 type RecordExp struct {
@@ -499,7 +490,7 @@ type RecordExp struct {
 	pos    Pos
 }
 
-func (e *RecordExp) String(strs *Strings, strBuilder *strings.Builder, level int) {
+func (e *RecordExp) String(strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level)
 	strBuilder.WriteString("RecordExp\n")
 	indent(strBuilder, level+1)
@@ -509,7 +500,7 @@ func (e *RecordExp) String(strs *Strings, strBuilder *strings.Builder, level int
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Fields\n")
 	for _, field := range e.fields {
-		field.String(strs, strBuilder, level+2)
+		field.String(strBuilder, level+2)
 	}
 }
 
@@ -518,15 +509,15 @@ func (e *RecordExp) ExpPos() Pos {
 }
 
 type SequenceExp struct {
-	seq []Exp
-	pos Pos
+	exps []Exp
+	pos  Pos
 }
 
-func (e *SequenceExp) String(strs *Strings, strBuilder *strings.Builder, level int) {
+func (e *SequenceExp) String(strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level)
 	strBuilder.WriteString("SequenceExp\n")
-	for _, field := range e.seq {
-		field.String(strs, strBuilder, level+1)
+	for _, field := range e.exps {
+		field.String(strBuilder, level+1)
 	}
 }
 
@@ -539,7 +530,7 @@ type StrExp struct {
 	pos Pos
 }
 
-func (e *StrExp) String(_ *Strings, strBuilder *strings.Builder, level int) {
+func (e *StrExp) String(strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level)
 	strBuilder.WriteString("String\n")
 	indent(strBuilder, level+1)
@@ -554,14 +545,44 @@ type VarExp struct {
 	v Var
 }
 
-func (e *VarExp) String(strs *Strings, strBuilder *strings.Builder, level int) {
+func (e *VarExp) String(strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level)
 	strBuilder.WriteString("VarExp\n")
-	e.v.String(strs, strBuilder, level+1)
+	e.v.String(strBuilder, level+1)
 }
 
 func (e *VarExp) ExpPos() Pos {
 	return e.v.VarPos()
+}
+
+type ForExp struct {
+	from Exp
+	to   Exp
+	body Exp
+	pos  Pos
+	sym  Symbol
+}
+
+func (e *ForExp) String(strBuilder *strings.Builder, level int) {
+	indent(strBuilder, level)
+	strBuilder.WriteString("ForExp\n")
+	indent(strBuilder, level+1)
+	strBuilder.WriteString("ItVar\n")
+	indent(strBuilder, level+2)
+	strBuilder.WriteString(strs.Get(e.sym) + "\n")
+	indent(strBuilder, level+1)
+	strBuilder.WriteString("From\n")
+	e.from.String(strBuilder, level+2)
+	indent(strBuilder, level+1)
+	strBuilder.WriteString("To\n")
+	e.to.String(strBuilder, level+2)
+	indent(strBuilder, level+1)
+	strBuilder.WriteString("Body\n")
+	e.body.String(strBuilder, level+2)
+}
+
+func (e *ForExp) ExpPos() Pos {
+	return e.pos
 }
 
 type WhileExp struct {
@@ -570,15 +591,15 @@ type WhileExp struct {
 	pos  Pos
 }
 
-func (e *WhileExp) String(strs *Strings, strBuilder *strings.Builder, level int) {
+func (e *WhileExp) String(strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level)
 	strBuilder.WriteString("WhileExp\n")
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Predicate\n")
-	e.pred.String(strs, strBuilder, level+2)
+	e.pred.String(strBuilder, level+2)
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Body\n")
-	e.body.String(strs, strBuilder, level+2)
+	e.body.String(strBuilder, level+2)
 }
 
 func (e *WhileExp) ExpPos() Pos {
@@ -601,7 +622,7 @@ type SimpleVar struct {
 	pos    Pos
 }
 
-func (v *SimpleVar) String(strs *Strings, strBuilder *strings.Builder, level int) {
+func (v *SimpleVar) String(strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level)
 	strBuilder.WriteString("SimpleVar\n")
 	indent(strBuilder, level+1)
@@ -618,12 +639,12 @@ type FieldVar struct {
 	pos      Pos
 }
 
-func (v *FieldVar) String(strs *Strings, strBuilder *strings.Builder, level int) {
+func (v *FieldVar) String(strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level)
 	strBuilder.WriteString("FieldVar\n")
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Var\n")
-	v.variable.String(strs, strBuilder, level+2)
+	v.variable.String(strBuilder, level+2)
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Field\n")
 	indent(strBuilder, level+2)
@@ -640,15 +661,15 @@ type SubscriptionVar struct {
 	pos      Pos
 }
 
-func (v *SubscriptionVar) String(strs *Strings, strBuilder *strings.Builder, level int) {
+func (v *SubscriptionVar) String(strBuilder *strings.Builder, level int) {
 	indent(strBuilder, level)
 	strBuilder.WriteString("SubscriptionVar\n")
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Var\n")
-	v.variable.String(strs, strBuilder, level+2)
+	v.variable.String(strBuilder, level+2)
 	indent(strBuilder, level+1)
 	strBuilder.WriteString("Subscript\n")
-	v.exp.String(strs, strBuilder, level+2)
+	v.exp.String(strBuilder, level+2)
 }
 
 func (v *SubscriptionVar) VarPos() Pos {

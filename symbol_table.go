@@ -39,12 +39,56 @@ func (s *Strings) Symbol(str string) Symbol {
 	return s.nextSymbol
 }
 
+type EscapeST struct {
+	st *BaseST
+}
+
+func NewEscapeST() *EscapeST {
+	return &EscapeST{
+		st: NewST(),
+	}
+}
+
+func (est *EscapeST) BeginScope() {
+	panic("not implemented")
+}
+
+func (est *EscapeST) EndScope() {
+	panic("not implemented")
+}
+
+func (est *EscapeST) Enter(sym Symbol, data *EscapeEntry) {
+	est.st.Enter(sym, data)
+}
+
+func (vst *EscapeST) Look(sym Symbol) (*EscapeEntry, error) {
+	v, err := vst.st.Look(sym)
+	if err != nil {
+		return nil, err
+	}
+
+	v1, ok := v.(*EscapeEntry)
+	if !ok {
+		panic("expect env entry in variable ST")
+	}
+
+	return v1, nil
+}
+
+func (vst *EscapeST) Replace(sym Symbol, data *EscapeEntry) {
+	vst.st.Replace(sym, data)
+}
+
+func (vst *EscapeST) Name(sym Symbol) string {
+	return vst.st.Name(sym)
+}
+
 type VarST struct {
 	st *BaseST
 }
 
-func NewVarST(strings *Strings) *VarST {
-	return &VarST{st: NewST(strings)}
+func NewVarST() *VarST {
+	return &VarST{st: NewST()}
 }
 
 func (vst *VarST) BeginScope() {
@@ -85,8 +129,8 @@ type TypeST struct {
 	st *BaseST
 }
 
-func NewTypeST(strings *Strings) *TypeST {
-	return &TypeST{st: NewST(strings)}
+func NewTypeST() *TypeST {
+	return &TypeST{st: NewST()}
 }
 
 func (vst *TypeST) BeginScope() {
@@ -125,13 +169,11 @@ func (vst *TypeST) Name(sym Symbol) string {
 
 type BaseST struct {
 	stack   [][]Symbol
-	strings *Strings
 	table   map[Symbol][]interface{}
 }
 
-func NewST(strings *Strings) *BaseST {
+func NewST() *BaseST {
 	st := BaseST{
-		strings: strings,
 		table:   make(map[Symbol][]interface{}),
 	}
 
@@ -185,7 +227,7 @@ func (s *BaseST) Look(sym Symbol) (interface{}, error) {
 }
 
 func (s *BaseST) Name(sym Symbol) string {
-	return s.strings.strings[sym]
+	return strs.strings[sym]
 }
 
 func (s *BaseST) Replace(sym Symbol, data interface{}) {
