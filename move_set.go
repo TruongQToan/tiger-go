@@ -1,7 +1,5 @@
 package main
 
-import "fmt"
-
 type Move struct {
 	src, dst *IGraphNode
 }
@@ -101,7 +99,6 @@ func (s *MoveSet) Remove(mv *Move) {
 	src, dst := mv.src.temp, mv.dst.temp
 	idx := s.indices[src][dst]
 	delete(s.indices[src], dst)
-	fmt.Println("len idx", idx, len(s.moves))
 	s.moves = append(s.moves[:idx], s.moves[idx+1:]...)
 	for i := idx; i < len(s.moves); i++ {
 		s.indices[s.moves[i].src.temp][s.moves[i].dst.temp] = i

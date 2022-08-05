@@ -1,7 +1,5 @@
 package main
 
-import "fmt"
-
 type Coloring struct {
 	iGraph IGraph
 	fGraph FGraph
@@ -246,7 +244,6 @@ func (c *Coloring) adj(n *IGraphNode) *IGraphNodeSet {
 }
 
 func (c *Coloring) combine(u, v *IGraphNode) {
-	fmt.Println("combine u and v", tempMap[u.temp], tm.TempString(v.temp))
 	// v isn't in simplifyWorklist when this function is called because that worklist is empty, as in the code of the Main function
 	if c.freezeWorklist.Has(v) {
 		c.freezeWorklist.Remove(v)
@@ -263,7 +260,6 @@ func (c *Coloring) combine(u, v *IGraphNode) {
 	}
 
 	if u.degree >= c.K && c.freezeWorklist.Has(u) {
-		fmt.Println("spill coalesced", tm.TempString(u.temp))
 		c.freezeWorklist.Remove(u)
 		c.spillWorklist.Add(u)
 	}
@@ -347,7 +343,7 @@ func (c *Coloring) addWorklist(node *IGraphNode) {
 
 func (c *Coloring) findAlias(node *IGraphNode) *IGraphNode {
 	if c.coalesceNodes.Has(node) {
-		return c.alias[node.temp]
+		return c.findAlias(c.alias[node.temp])
 	}
 
 	return node
@@ -407,13 +403,6 @@ func (c *Coloring) assignColor() {
 			okColors.Add(color)
 		}
 
-		fmt.Println("len adj", node.AdjSet().Len(), len(c.registers))
-		for _, adj := range node.AdjSet().All() {
-			fmt.Printf("%s ", tm.TempString(adj.temp))
-		}
-
-		fmt.Println()
-
 		for _, adj := range node.AdjSet().All() {
 			v := c.findAlias(adj)
 			if c.coloredNodes.Has(v) || c.precolored.Has(v) {
@@ -433,7 +422,6 @@ func (c *Coloring) assignColor() {
 
 	for _, node := range c.coalesceNodes.All() {
 		c.colored[node.temp] = c.colored[c.findAlias(node).temp]
-		fmt.Println("coalesced nodes", tm.TempString(node.temp), tempMap[c.findAlias(node).temp], tempMap[c.colored[c.findAlias(node).temp]])
 	}
 }
 

@@ -4,18 +4,17 @@ import (
 	"bufio"
 	"bytes"
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"strings"
 )
 
-var fileName = flag.String("source", "./test_files/hello2.tig", "source file to compile")
+var fileName = flag.String("source", "./test_files/hello3.tig", "source file to compile")
 
 var (
 	strs = NewStrings()
-	tm = NewTempManagement()
+	tm   = NewTempManagement()
 )
 
 func addTab(instrs []Instr) {
@@ -43,31 +42,13 @@ func emitProc(sb *strings.Builder, procs []*ProcFrag) {
 		}
 
 		instrs = ProcEntryExit2(instrs)
-		for _, instr := range instrs {
-			fmt.Println(formatAssem(instr, func(temp Temp) string {
-				if tmp, ok := tempMap[temp]; ok {
-					return tmp
-				}
-				return tm.TempString(temp)
-			}) + "\n")
-		}
 
 		var (
 			colored map[Temp]string
 		)
 
-		// TODO: uncomment this
 		instrs, colored = Alloc(proc.frame, instrs)
-		for t, c := range colored {
-			if tmp, ok := tempMap[t]; ok {
-				fmt.Println("color", tmp, c)
-			} else {
-				fmt.Println("color", tm.TempString(t), c)
-			}
-		}
-
 		addTab(instrs)
-
 		prolog, epilog := proc.frame.ProcEntryExit3()
 		sb.WriteString(prolog)
 		for _, instr := range instrs {
@@ -88,7 +69,7 @@ func emitString(sb *strings.Builder, strs []*StrFrag) {
 func emit(frags []Frag) string {
 	var (
 		procs []*ProcFrag
-		strs []*StrFrag
+		strs  []*StrFrag
 	)
 
 	for _, frag := range frags {
