@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 func isRedundantMove(colored map[Temp]Temp, i Instr) bool {
 	i1, ok := i.(*MoveInstr)
 	if !ok {
@@ -126,6 +128,15 @@ func Alloc(frame Frame, instrs []Instr) ([]Instr, map[Temp]string) {
 		}
 
 		return filteredInstrs, res
+	}
+
+	fmt.Println("REWRITE", spilledNodes.Len())
+	for _, node := range spilledNodes.All() {
+		if tmp, ok := tempMap[node.temp]; ok {
+			fmt.Println("spilled node", tmp)
+		} else {
+			fmt.Println("spilled node", tm.TempString(node.temp))
+		}
 	}
 
 	rewrittenInstrs := rewrite(frame, spilledNodes, instrs)

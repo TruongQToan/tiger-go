@@ -29,10 +29,17 @@ func addEdges(node *FGraphNode) []*tempEdge {
 	edges := make([]*tempEdge, 0)
 	for def := range node.def {
 		for liveOut := range node.liveOut {
-			edges = append(edges, &tempEdge{
-				u: def,
-				v: liveOut,
-			})
+			if node.isMove && !node.use.Has(liveOut) {
+				edges = append(edges, &tempEdge{
+					u: def,
+					v: liveOut,
+				})
+			} else if !node.isMove {
+				edges = append(edges, &tempEdge{
+					u: def,
+					v: liveOut,
+				})
+			}
 		}
 	}
 
@@ -58,6 +65,7 @@ func convertTempToIGraph(fGraph FGraph) IGraph {
 	for temp := range allTemps {
 		iNode := &IGraphNode{
 			temp: temp,
+			adj:  InitIGraphNodeSet(),
 		}
 
 		iNodes[temp] = iNode
@@ -69,18 +77,17 @@ func convertTempToIGraph(fGraph FGraph) IGraph {
 func allMoves(fGraph FGraph, iNodes map[Temp]*IGraphNode) *MoveSet {
 	pairs := InitMoveSet()
 	for _, node := range fGraph {
-		if node.isMove {
-			var (
-				src, dst Temp
-			)
-
-			src, node.use = node.use.Split()
-			dst, node.def = node.def.Split()
-			pairs.Add(&Move{
-				src: iNodes[src],
-				dst: iNodes[dst],
-			})
+		if !node.isMove {
+			continue
 		}
+
+		var src, dst Temp
+		src, node.use = node.use.Split()
+		dst, node.def = node.def.Split()
+		pairs.Add(&Move{
+			src: iNodes[src],
+			dst: iNodes[dst],
+		})
 	}
 
 	return pairs
@@ -93,10 +100,15 @@ func InitIGraph(fGraph FGraph) (IGraph, *MoveSet) {
 	allMoves := allMoves(fGraph, iGraph)
 	for _, edge := range edges {
 		uNode, vNode := iGraph[edge.u], iGraph[edge.v]
-		uNode.degree++
-		vNode.degree++
-		uNode.adj = append(uNode.adj, vNode)
-		vNode.adj = append(vNode.adj, uNode)
+		if !uNode.AdjSet().Has(vNode) {
+			uNode.degree++
+			uNode.adj.Add(vNode)
+		}
+
+		if !vNode.AdjSet().Has(uNode) {
+			vNode.degree++
+			vNode.adj.Add(uNode)
+		}
 	}
 
 	return iGraph, allMoves

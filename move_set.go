@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 type Move struct {
 	src, dst *IGraphNode
 }
@@ -18,7 +20,7 @@ func InitMoveSet() *MoveSet {
 func (s *MoveSet) Split() (*Move, *MoveSet) {
 	first := s.moves[0]
 	s.moves = s.moves[1:]
-	delete(s.indices, first.src.temp)
+	delete(s.indices[first.src.temp], first.dst.temp)
 	for i, p := range s.moves {
 		s.indices[p.src.temp][p.dst.temp] = i
 	}
@@ -82,8 +84,8 @@ func (s *MoveSet) Len() int {
 }
 
 func (s *MoveSet) Has(mv *Move) bool {
-	if _, ok := s.indices[mv.src.temp]; ok {
-		if _, ok := s.indices[mv.dst.temp]; ok {
+	if v, ok := s.indices[mv.src.temp]; ok {
+		if _, ok := v[mv.dst.temp]; ok {
 			return true
 		}
 	}
@@ -98,7 +100,8 @@ func (s *MoveSet) Remove(mv *Move) {
 
 	src, dst := mv.src.temp, mv.dst.temp
 	idx := s.indices[src][dst]
-	delete(s.indices, src)
+	delete(s.indices[src], dst)
+	fmt.Println("len idx", idx, len(s.moves))
 	s.moves = append(s.moves[:idx], s.moves[idx+1:]...)
 	for i := idx; i < len(s.moves); i++ {
 		s.indices[s.moves[i].src.temp][s.moves[i].dst.temp] = i

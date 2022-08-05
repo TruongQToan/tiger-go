@@ -109,8 +109,12 @@ func (s *IGraphNodeSet) Remove(node *IGraphNode) {
 
 type IGraphNode struct {
 	temp   Temp
-	adj    []GraphNode
+	adj    *IGraphNodeSet
 	degree int
+}
+
+func (node *IGraphNode) Id() int64 {
+	panic("not implemented")
 }
 
 func (node *IGraphNode) NodeName() string {
@@ -126,16 +130,11 @@ func (node *IGraphNode) Pred() []GraphNode {
 }
 
 func (node *IGraphNode) Adj() []GraphNode {
-	return node.adj
+	panic("don't support")
 }
 
 func (node *IGraphNode) AdjSet() *IGraphNodeSet {
-	adj := InitIGraphNodeSet()
-	for _, n := range node.adj {
-		adj.Add(n.(*IGraphNode))
-	}
-
-	return adj
+	return node.adj
 }
 
 func (node *IGraphNode) Equal(other GraphNode) bool {

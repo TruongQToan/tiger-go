@@ -204,8 +204,6 @@ func (c *Coloring) coalesce() {
 		u, v = x, y
 	}
 
-	c.worklistMoves.Remove(mv)
-
 	if u.temp == v.temp {
 		c.coalescedMoves.Add(mv)
 		c.addWorklist(u)
@@ -235,8 +233,7 @@ func (c *Coloring) spillCost(iNode *IGraphNode) float64 {
 		}
 	}
 
-	adjs := len(iNode.adj)
-	return float64(useDefines) / float64(adjs)
+	return float64(useDefines) / float64(iNode.degree)
 }
 
 func (c *Coloring) adj(n *IGraphNode) *IGraphNodeSet {
@@ -249,6 +246,7 @@ func (c *Coloring) adj(n *IGraphNode) *IGraphNodeSet {
 }
 
 func (c *Coloring) combine(u, v *IGraphNode) {
+	fmt.Println("combine u and v", tempMap[u.temp], tm.TempString(v.temp))
 	// v isn't in simplifyWorklist when this function is called because that worklist is empty, as in the code of the Main function
 	if c.freezeWorklist.Has(v) {
 		c.freezeWorklist.Remove(v)
@@ -265,6 +263,7 @@ func (c *Coloring) combine(u, v *IGraphNode) {
 	}
 
 	if u.degree >= c.K && c.freezeWorklist.Has(u) {
+		fmt.Println("spill coalesced", tm.TempString(u.temp))
 		c.freezeWorklist.Remove(u)
 		c.spillWorklist.Add(u)
 	}
@@ -326,7 +325,7 @@ func (c *Coloring) briggsTest(adj1, adj2 *IGraphNodeSet) bool {
 }
 
 func (c *Coloring) ok(t, b *IGraphNode) bool {
-	return t.degree < c.K || c.precolored.Has(t) || c.adj(t).Has(b)
+	return t.degree < c.K || c.precolored.Has(t) || t.AdjSet().Has(b)
 }
 
 func (c *Coloring) addWorklist(node *IGraphNode) {
@@ -362,7 +361,6 @@ func (c *Coloring) freeze() {
 	// we already remove all the move related to node in activeModes.
 	// aldo, to this point, workingMoves is empty
 
-	fmt.Println("freeze ", tm.TempString(node.temp), tempMap[node.temp])
 	c.simplifyWorklist.Add(node)
 	c.freezeWorklist.Remove(node)
 
@@ -408,6 +406,13 @@ func (c *Coloring) assignColor() {
 		for color := range c.registers {
 			okColors.Add(color)
 		}
+
+		fmt.Println("len adj", node.AdjSet().Len(), len(c.registers))
+		for _, adj := range node.AdjSet().All() {
+			fmt.Printf("%s ", tm.TempString(adj.temp))
+		}
+
+		fmt.Println()
 
 		for _, adj := range node.AdjSet().All() {
 			v := c.findAlias(adj)

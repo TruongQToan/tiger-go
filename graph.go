@@ -1,6 +1,7 @@
 package main
 
 type GraphNode interface {
+	Id() int64
 	NodeName() string
 	Succ() []GraphNode
 	Pred() []GraphNode

@@ -44,6 +44,10 @@ func Instr2FGraphNode(instr Instr) *FGraphNode {
 	}
 }
 
+func (node *FGraphNode) Id() int64 {
+	return node.id
+}
+
 func (node *FGraphNode) NodeName() string {
 	return node.instr.assemStr()
 }
@@ -86,6 +90,9 @@ func (node *FGraphNode) RmPred(pred *FGraphNode) {
 
 	node.pred = append(node.pred[:v], node.pred[v+1:]...)
 	delete(node.predMap, pred.id)
+	for i := v; i < len(node.pred); i++ {
+		node.predMap[node.pred[v].Id()] = i
+	}
 }
 
 func (node *FGraphNode) RmSucc(succ *FGraphNode) {
@@ -96,6 +103,9 @@ func (node *FGraphNode) RmSucc(succ *FGraphNode) {
 
 	node.succ = append(node.succ[:v], node.succ[v+1:]...)
 	delete(node.succMap, succ.id)
+	for i := v; i < len(node.succ); i++ {
+		node.succMap[node.succ[v].Id()] = i
+	}
 }
 
 func (node *FGraphNode) Equal(other GraphNode) bool {

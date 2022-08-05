@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-var fileName = flag.String("source", "./test_files/hello.tig", "source file to compile")
+var fileName = flag.String("source", "./test_files/hello2.tig", "source file to compile")
 
 var (
 	strs = NewStrings()
@@ -43,6 +43,15 @@ func emitProc(sb *strings.Builder, procs []*ProcFrag) {
 		}
 
 		instrs = ProcEntryExit2(instrs)
+		for _, instr := range instrs {
+			fmt.Println(formatAssem(instr, func(temp Temp) string {
+				if tmp, ok := tempMap[temp]; ok {
+					return tmp
+				}
+				return tm.TempString(temp)
+			}) + "\n")
+		}
+
 		var (
 			colored map[Temp]string
 		)
@@ -67,15 +76,6 @@ func emitProc(sb *strings.Builder, procs []*ProcFrag) {
 			}) + "\n")
 		}
 		sb.WriteString(epilog)
-		for _, instr := range instrs {
-			fmt.Println(formatAssem(instr, func(temp Temp) string {
-				if t, ok := tempMap[temp]; ok {
-					return t
-				}
-
-				return colored[temp]
-			}) + "\n")
-		}
 	}
 }
 

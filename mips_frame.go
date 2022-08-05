@@ -68,7 +68,7 @@ var (
 	calleeSaves = []Temp{s0, s1, s2, s3, s4, s5, s6, s7}
 
 	// caller-saved registers
-	callerSaves = []Temp{t0, t1, t2, t3, t4, t5, t6, t7, t8, t9}
+	callerSaves = []Temp{t0, t1, t2, t3, t4, t5, t6, t7}
 
 	tempMap = map[Temp]string{
 		a0: "$a0",
@@ -160,7 +160,7 @@ func (f *MipsFrame) createAccesses(i int32, escapes []bool) {
 
 	// after the first 4 arguments, always escape
 	if int(i) >= len(argRegs) {
-		f.accesses = append(f.accesses, &InFrameMipsAccess{offset: i * wordSize})
+		f.accesses = append(f.accesses, &InFrameMipsAccess{offset: (i+1) * wordSize})
 		f.createAccesses(i+1, escapes)
 		return
 	}
@@ -168,7 +168,7 @@ func (f *MipsFrame) createAccesses(i int32, escapes []bool) {
 	var acc FrameAccess
 	// the first 4 arguments are passed in 4 registers [$a0, $a1, $a2, $a3]
 	if escapes[i] {
-		acc = &InFrameMipsAccess{offset: i * wordSize}
+		acc = &InFrameMipsAccess{offset: (i+1) * wordSize}
 	} else {
 		acc = &InRegMipsAccess{tm.NewTemp()}
 	}
@@ -297,5 +297,6 @@ func StringFrag(sb *strings.Builder, frag *StrFrag) string {
 		}
 	}
 
+	sb.WriteString("\"\n")
 	return sb.String()
 }
