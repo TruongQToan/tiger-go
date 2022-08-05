@@ -95,6 +95,7 @@ var (
 		fp: "$fp",
 		sp: "$sp",
 		ra: "$ra",
+		rv: "$v0",
 	}
 )
 
@@ -241,6 +242,10 @@ func (f *MipsFrame) ProcEntryExit1(body StmIr) StmIr {
 		})
 	}
 
+	if shifts == nil {
+		return seqStm(append(append(saves, body), restores...)...)
+	}
+
 	return &SeqStmIr{
 		first:  shifts,
 		second: seqStm(append(append(saves, body), restores...)...),
@@ -265,9 +270,7 @@ func ProcEntryExit2(body []Instr) []Instr {
 
 func StringFrag(sb *strings.Builder, frag *StrFrag) string {
 	sb.WriteString(tm.LabelString(frag.label))
-	sb.WriteString(":\t.word\t")
-	sb.WriteString(fmt.Sprintf("%d", len(frag.str)))
-	sb.WriteString("\n\t.ascii\t\"")
+	sb.WriteString(":\t.asciiz\t\"")
 	for _, c := range frag.str {
 		switch c {
 		case '\n':
@@ -294,6 +297,5 @@ func StringFrag(sb *strings.Builder, frag *StrFrag) string {
 		}
 	}
 
-	sb.WriteString("\"\n\t.align\t2\n")
 	return sb.String()
 }

@@ -92,21 +92,13 @@ func (s *MoveSet) Has(mv *Move) bool {
 }
 
 func (s *MoveSet) Remove(mv *Move) {
-	src, dst := mv.src.temp, mv.dst.temp
-	delete(s.indices, src)
-
-	idx := -1
-	for i, node := range s.moves {
-		if node.src.temp == src && node.dst.temp == dst {
-			idx = i
-			break
-		}
-	}
-
-	if idx == -1 {
+	if !s.Has(mv) {
 		return
 	}
 
+	src, dst := mv.src.temp, mv.dst.temp
+	idx := s.indices[src][dst]
+	delete(s.indices, src)
 	s.moves = append(s.moves[:idx], s.moves[idx+1:]...)
 	for i := idx; i < len(s.moves); i++ {
 		s.indices[s.moves[i].src.temp][s.moves[i].dst.temp] = i

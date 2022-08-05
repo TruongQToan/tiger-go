@@ -511,11 +511,13 @@ func (c *CodeGenerator) buildArgs(argsRegisters []Temp, args []ExpIr) []Temp {
 
 	n := len(argsRegisters)
 	temps := make([]Temp, 0, n)
+	fmt.Println("len args", len(args))
+	debugExpIr(args[0])
 	for i, exp := range args {
 		if i < n {
 			c.munchStm(&MoveStmIr{
 				dst: &TempExpIr{argsRegisters[i]},
-				src: exp,
+				src: &TempExpIr{c.munchExp(exp)},
 			})
 
 			temps = append(temps, argsRegisters[i])
@@ -528,7 +530,7 @@ func (c *CodeGenerator) buildArgs(argsRegisters []Temp, args []ExpIr) []Temp {
 						right: &TempExpIr{fp},
 					},
 				},
-				src: exp,
+				src: &TempExpIr{c.munchExp(exp)},
 			})
 		}
 	}

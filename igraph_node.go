@@ -76,6 +76,15 @@ func (s *IGraphNodeSet) All() []*IGraphNode {
 	return s.nodes
 }
 
+func (s *IGraphNodeSet) Clone() *IGraphNodeSet {
+	clone := InitIGraphNodeSet()
+	for _, node := range s.All() {
+		clone.Add(node)
+	}
+
+	return clone
+}
+
 func (s *IGraphNodeSet) Add(node *IGraphNode) {
 	if s.Has(node) {
 		return

@@ -303,3 +303,9 @@ func debugStmIr(stm StmIr) {
 	stm.printStm(&sb, 0)
 	fmt.Println(sb.String())
 }
+
+func debugExpIr(exp ExpIr) {
+	sb := strings.Builder{}
+	exp.printExpIr(&sb, 0)
+	fmt.Println(sb.String())
+}

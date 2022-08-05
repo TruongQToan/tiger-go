@@ -1,4 +1,4 @@
-.text
+    .text
 initArray:
 	li $a2, 4
 	mul $a0, $a0, $a2

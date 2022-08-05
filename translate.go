@@ -385,6 +385,23 @@ func (t *Translate) letExp(desc []TransExp, body TransExp) TransExp {
 }
 
 func (t *Translate) call(useLevel, defLevel *Level, label Label, exps []TransExp, isProcedure bool) TransExp {
+	if defLevel == OutermostLevel {
+		args := make([]ExpIr, 0, len(exps))
+		for _, exp := range exps {
+			args = append(args, exp.unEx())
+		}
+
+		if isProcedure {
+			return &Nx{
+				stm: &ExpStmIr{t.externalCall(tm.LabelString(label), args...)},
+			}
+		}
+
+		return &Ex{
+			t.externalCall(tm.LabelString(label), args...),
+		}
+	}
+
 	args := make([]ExpIr, 0, 1+len(exps))
 	args = append(args, defLevel.staticLink(useLevel, &TempExpIr{fp}))
 	for _, e := range exps {

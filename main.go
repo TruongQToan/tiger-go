@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -46,15 +47,19 @@ func emitProc(sb *strings.Builder, procs []*ProcFrag) {
 			colored map[Temp]string
 		)
 
+		// TODO: uncomment this
 		instrs, colored = Alloc(proc.frame, instrs)
-		addTab(instrs)
-
-		for reg, col := range colored {
-			fmt.Println(tm.TempString(reg), col)
+		for t, c := range colored {
+			if tmp, ok := tempMap[t]; ok {
+				fmt.Println("color", tmp, c)
+			} else {
+				fmt.Println("color", tm.TempString(t), c)
+			}
 		}
 
-		prolog, epilog := proc.frame.ProcEntryExit3()
+		addTab(instrs)
 
+		prolog, epilog := proc.frame.ProcEntryExit3()
 		sb.WriteString(prolog)
 		for _, instr := range instrs {
 			sb.WriteString(formatAssem(instr, func(temp Temp) string {
@@ -62,9 +67,14 @@ func emitProc(sb *strings.Builder, procs []*ProcFrag) {
 			}) + "\n")
 		}
 		sb.WriteString(epilog)
-
 		for _, instr := range instrs {
-			fmt.Println(formatAssem(instr, tm.TempString))
+			fmt.Println(formatAssem(instr, func(temp Temp) string {
+				if t, ok := tempMap[temp]; ok {
+					return t
+				}
+
+				return colored[temp]
+			}) + "\n")
 		}
 	}
 }
@@ -122,7 +132,12 @@ func compile(f []byte) {
 		log.Fatalf("cannot create file %v", err)
 	}
 
-	fo.WriteString(emit(frags))
+	rb, err := ioutil.ReadFile("./runtime/runtime.s")
+	if err != nil {
+		log.Fatalf("cannot open file %v", err)
+	}
+
+	fo.WriteString(string(rb) + "\n" + emit(frags))
 }
 
 func main() {

@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 type Coloring struct {
 	iGraph IGraph
 	fGraph FGraph
@@ -115,6 +117,7 @@ func (c *Coloring) initColoredAndPrecolored() {
 		if _, ok := c.registers[tmp]; ok {
 			c.precolored.Add(node)
 			c.colored[tmp] = tmp
+			c.coloredNodes.Add(node)
 		} else {
 			c.initials.Add(node)
 		}
@@ -163,7 +166,7 @@ func (c *Coloring) decrementDegree(node *IGraphNode) {
 	d := node.degree
 	node.degree--
 	if d == c.K {
-		adj := node.AdjSet()
+		adj := c.adj(node)
 		adj.Add(node)
 		c.enableMoves(adj)
 		c.spillWorklist.Remove(node)
@@ -179,8 +182,8 @@ func (c *Coloring) simplify() {
 	var node *IGraphNode
 	node, c.simplifyWorklist = c.simplifyWorklist.Split()
 	c.selectStack = append(c.selectStack, node)
-	for _, adj := range node.adj {
-		c.decrementDegree(adj.(*IGraphNode))
+	for _, adj := range c.adj(node).All() {
+		c.decrementDegree(adj)
 	}
 }
 
@@ -206,12 +209,12 @@ func (c *Coloring) coalesce() {
 	if u.temp == v.temp {
 		c.coalescedMoves.Add(mv)
 		c.addWorklist(u)
-	} else if c.precolored.Has(v) || u.AdjSet().Has(v) {
+	} else if c.precolored.Has(v) || c.adj(u).Has(v) {
 		// if v is precolored, so in this case, both the dst and src of the move is precolored.
 		c.constrainedMoves.Add(mv)
 		c.addWorklist(u)
 		c.addWorklist(v)
-	} else if (c.precolored.Has(u) && c.georgeTest(v, u)) || (!c.precolored.Has(u) && c.briggsTest(u.AdjSet(), v.AdjSet())) {
+	} else if (c.precolored.Has(u) && c.georgeTest(v, u)) || (!c.precolored.Has(u) && c.briggsTest(c.adj(u), c.adj(v))) {
 		c.coalescedMoves.Add(mv)
 		c.combine(u, v)
 		c.addWorklist(u)
@@ -236,6 +239,15 @@ func (c *Coloring) spillCost(iNode *IGraphNode) float64 {
 	return float64(useDefines) / float64(adjs)
 }
 
+func (c *Coloring) adj(n *IGraphNode) *IGraphNodeSet {
+	nodes := c.coloredNodes.Clone()
+	for _, node := range c.selectStack {
+		nodes.Add(node)
+	}
+
+	return n.AdjSet().Diff(nodes)
+}
+
 func (c *Coloring) combine(u, v *IGraphNode) {
 	// v isn't in simplifyWorklist when this function is called because that worklist is empty, as in the code of the Main function
 	if c.freezeWorklist.Has(v) {
@@ -247,7 +259,7 @@ func (c *Coloring) combine(u, v *IGraphNode) {
 	c.coalesceNodes.Add(v)
 	c.alias[v.temp] = u
 	c.moveList[u.temp] = c.moveList[u.temp].Union(c.moveList[v.temp])
-	for _, node := range v.AdjSet().All() {
+	for _, node := range c.adj(v).All() {
 		c.addEdge(node, u)
 		c.decrementDegree(node)
 	}
@@ -267,16 +279,21 @@ func (c *Coloring) addEdge(u, v *IGraphNode) {
 		return
 	}
 
-	u.AdjSet().Add(v)
-	v.AdjSet().Add(u)
-	u.degree++
-	v.degree++
+	if !c.precolored.Has(u) {
+		u.AdjSet().Add(v)
+		u.degree++
+	}
+
+	if !c.precolored.Has(v) {
+		v.AdjSet().Add(u)
+		v.degree++
+	}
 }
 
 func (c *Coloring) georgeTest(a, b *IGraphNode) bool {
 	// a and b can be coalesced if for every adjacent node t of a. Either t is an insignificant node (degree(t) < K)
 	// or t is adjacent with b
-	for _, node := range a.AdjSet().All() {
+	for _, node := range c.adj(a).All() {
 		if !c.ok(node, b) {
 			return false
 		}
@@ -309,7 +326,7 @@ func (c *Coloring) briggsTest(adj1, adj2 *IGraphNodeSet) bool {
 }
 
 func (c *Coloring) ok(t, b *IGraphNode) bool {
-	return t.degree < c.K || c.precolored.Has(t) || t.AdjSet().Has(b)
+	return t.degree < c.K || c.precolored.Has(t) || c.adj(t).Has(b)
 }
 
 func (c *Coloring) addWorklist(node *IGraphNode) {
@@ -345,6 +362,7 @@ func (c *Coloring) freeze() {
 	// we already remove all the move related to node in activeModes.
 	// aldo, to this point, workingMoves is empty
 
+	fmt.Println("freeze ", tm.TempString(node.temp), tempMap[node.temp])
 	c.simplifyWorklist.Add(node)
 	c.freezeWorklist.Remove(node)
 
@@ -410,6 +428,7 @@ func (c *Coloring) assignColor() {
 
 	for _, node := range c.coalesceNodes.All() {
 		c.colored[node.temp] = c.colored[c.findAlias(node).temp]
+		fmt.Println("coalesced nodes", tm.TempString(node.temp), tempMap[c.findAlias(node).temp], tempMap[c.colored[c.findAlias(node).temp]])
 	}
 }
 
