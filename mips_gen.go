@@ -454,7 +454,7 @@ func (c *CodeGenerator) munchExp(exp ExpIr) Temp {
 
 			return c.gen(func(temp Temp) {
 				c.instructions = append(c.instructions, &OperInstr{
-					assem: "sub `d0, `s0, s1",
+					assem: "sub `d0, `s0, `s1",
 					dst:   []Temp{temp},
 					src:   []Temp{c.munchExp(t.left), c.munchExp(t.right)},
 				})
